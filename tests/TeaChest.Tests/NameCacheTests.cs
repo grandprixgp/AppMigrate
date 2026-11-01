@@ -138,4 +138,150 @@ public sealed class NameCacheTests : IDisposable
 
         Assert.Equal("Git.Git", cache.Find("Git", "")!.WingetId);
     }
+
+    [Fact]
+    public void CachedWingetMatchLooksLikeAFreshOne()
+    {
+        var item = new AppItem { Name = "Zoom", Source = "registry", InstallType = "manual" };
+
+        ScanService.ApplyResolution(item, Winget("Zoom.Zoom", MatchConfidence.Exact));
+
+        Assert.Equal("Zoom.Zoom", item.Id);
+        Assert.Equal("winget", item.Source);
+        Assert.Equal("winget", item.InstallType);
+        Assert.Equal(MatchConfidence.Exact, item.MatchConfidence);
+        Assert.Equal("Matched to a WinGet package by name.", item.Notes);
+    }
+
+    [Fact]
+    public void LooseMatchKeepsItsWarning()
+    {
+        var item = new AppItem { Name = "Everything", Source = "registry", InstallType = "manual" };
+
+        ScanService.ApplyResolution(item, Winget("voidtools.Everything", MatchConfidence.Loose));
+
+        Assert.Equal(MatchConfidence.Loose, item.MatchConfidence);
+        Assert.Equal("Matched to a WinGet package by a loose name match. Worth a quick check.", item.Notes);
+    }
+
+    [Fact]
+    public void StoreMatchLooksLikeAFreshOne()
+    {
+        var item = new AppItem
+        {
+            Name = "Apple Devices",
+            Id = "MSIX\\AppleInc.AppleDevices",
+            Source = "msix",
+            InstallType = "manual",
+            PackageFamilyName = "AppleInc.AppleDevices"
+        };
+
+        ScanService.ApplyResolution(item, new ScanService.ResolveResult(null, new NameMatch("9NP83LWLPZ9K", MatchConfidence.Exact)));
+
+        Assert.Equal("9NP83LWLPZ9K", item.Id);
+        Assert.Equal("msstore", item.Source);
+        Assert.Equal("msstore", item.InstallType);
+        Assert.Equal(MatchConfidence.Exact, item.MatchConfidence);
+        Assert.Equal("Matched to a Microsoft Store product ID.", item.Notes);
+    }
+
+    [Fact]
+    public void WingetMissFallsBackToManual()
+    {
+        var item = new AppItem { Name = "Truncated", Id = "", Source = "winget", InstallType = "winget" };
+
+        ScanService.ApplyResolution(item, NoMatch);
+
+        Assert.Equal("", item.Id);
+        Assert.Equal("winget", item.Source);
+        Assert.Equal("manual", item.InstallType);
+        Assert.Equal(MatchConfidence.None, item.MatchConfidence);
+        Assert.Equal("WinGet reported this app, but its package ID could not be resolved. Reinstall it manually.", item.Notes);
+    }
+
+    [Fact]
+    public void StoreMissPutsThePackageBack()
+    {
+        var item = new AppItem
+        {
+            Name = "Apple Devices",
+            Id = "MSIX\\AppleInc.AppleDevices",
+            Source = "msix",
+            InstallType = "manual",
+            PackageFamilyName = "AppleInc.AppleDevices"
+        };
+
+        ScanService.ApplyResolution(item, NoMatch);
+
+        Assert.Equal("MSIX\\AppleInc.AppleDevices", item.Id);
+        Assert.Equal("msix", item.Source);
+        Assert.Equal("manual", item.InstallType);
+        Assert.Equal(MatchConfidence.None, item.MatchConfidence);
+        Assert.Equal("Store app could not be matched automatically. Reinstall it from the Microsoft Store.", item.Notes);
+    }
+
+    [Fact]
+    public void ManualMissSaysSo()
+    {
+        var item = new AppItem { Name = "Unknown Tool", Source = "registry", InstallType = "manual" };
+
+        ScanService.ApplyResolution(item, NoMatch);
+
+        Assert.Equal("manual", item.InstallType);
+        Assert.Equal("No WinGet package found. Reinstall manually.", item.Notes);
+    }
+
+    [Fact]
+    public void ARealMissOverridesARememberedWingetMatch()
+    {
+        var item = new AppItem { Name = "Zoom", Id = "", Source = "winget", InstallType = "winget" };
+        ScanService.ApplyResolution(item, Winget("Zoom.Zoom", MatchConfidence.Exact));
+        Assert.Equal("Zoom.Zoom", item.Id);
+
+        ScanService.ApplyResolution(item, NoMatch);
+
+        Assert.Equal("", item.Id);
+        Assert.Equal("manual", item.InstallType);
+        Assert.Equal(MatchConfidence.None, item.MatchConfidence);
+        Assert.Contains("could not be resolved", item.Notes);
+    }
+
+    [Fact]
+    public void ARealMissOverridesARememberedStoreMatch()
+    {
+        var item = new AppItem
+        {
+            Name = "Apple Devices",
+            Id = "MSIX\\AppleInc.AppleDevices",
+            Source = "msix",
+            InstallType = "manual",
+            PackageFamilyName = "AppleInc.AppleDevices"
+        };
+        ScanService.ApplyResolution(item, new ScanService.ResolveResult(null, new NameMatch("9NP83LWLPZ9K", MatchConfidence.Exact)));
+        Assert.Equal("9NP83LWLPZ9K", item.Id);
+
+        ScanService.ApplyResolution(item, NoMatch);
+
+        Assert.Equal("MSIX\\AppleInc.AppleDevices", item.Id);
+        Assert.Equal("msix", item.Source);
+        Assert.Equal("manual", item.InstallType);
+        Assert.Equal(MatchConfidence.None, item.MatchConfidence);
+    }
+
+    [Fact]
+    public void ARealAnswerReplacesADifferentRememberedOne()
+    {
+        var item = new AppItem { Name = "Zoom", Id = "", Source = "winget", InstallType = "winget" };
+        ScanService.ApplyResolution(item, Winget("Other.Zoom", MatchConfidence.Exact));
+
+        ScanService.ApplyResolution(item, Winget("Zoom.Zoom", MatchConfidence.Loose));
+
+        Assert.Equal("Zoom.Zoom", item.Id);
+        Assert.Equal(MatchConfidence.Loose, item.MatchConfidence);
+    }
+
+    private static ScanService.ResolveResult Winget(string id, MatchConfidence confidence)
+        => new(new NameMatch(id, confidence), null);
+
+    private static readonly ScanService.ResolveResult NoMatch = new(null, null);
 }

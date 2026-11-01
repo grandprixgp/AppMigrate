@@ -15,10 +15,12 @@ public sealed class ScanService
     private readonly AppxInventoryService _appx = new();
     private readonly WingetService _winget = new();
     private readonly SelectionOptions _options;
+    private readonly NameCache _names;
 
-    public ScanService(SelectionOptions? options = null)
+    public ScanService(SelectionOptions? options = null, NameCache? nameCache = null)
     {
         _options = options ?? new SelectionOptions();
+        _names = nameCache ?? new NameCache(AppPaths.DataDirectory);
     }
 
     public async Task<ScanResult> ScanAsync(IProgress<ScanSnapshot>? progress, CancellationToken cancellationToken)
@@ -74,11 +76,26 @@ public sealed class ScanService
         List<AppItem> resolveTargets = wingetAvailable ? BuildResolutionTargets(items, gate) : new List<AppItem>();
         if (resolveTargets.Count > 0)
         {
+            // What the lookup is allowed to change, kept so a real answer that finds nothing can
+            // put the row back exactly as the inventory described it.
+            var baselines = resolveTargets.ToDictionary(item => item, item => item.Clone());
+
+            int remembered = 0;
+            foreach (AppItem item in resolveTargets)
+            {
+                NameCacheEntry? cached = _names.Find(item.Name, item.Publisher);
+                if (cached == null) continue;
+                lock (gate) ApplyResolution(item, FromCache(cached));
+                remembered++;
+            }
+
             int done = 0;
-            Publish(items, gate, progress, $"Resolving {resolveTargets.Count} package IDs in parallel...", true, 0, false);
-            // TODO: name lookups are thrown away after every scan. Cache them on disk (keyed by
-            // name + publisher) and show the cached answers straight away, but still run the real
-            // lookups in the background and patch the results back in, so the cache never goes stale.
+            Publish(items, gate, progress,
+                remembered > 0
+                    ? $"Showing {remembered} remembered answers while checking again..."
+                    : $"Resolving {resolveTargets.Count} package IDs in parallel...",
+                true, 0, false);
+
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 8,
@@ -90,42 +107,15 @@ public sealed class ScanService
                 ResolveResult result = await ResolveOneAsync(item, token).ConfigureAwait(false);
                 lock (gate)
                 {
-                    if (result.WingetId != null)
-                    {
-                        item.Id = result.WingetId.Id;
-                        item.Source = "winget";
-                        item.InstallType = "winget";
-                        item.MatchConfidence = result.WingetId.Confidence;
-                        item.Notes = result.WingetId.Confidence == MatchConfidence.Loose
-                            ? "Matched to a WinGet package by a loose name match. Worth a quick check."
-                            : "Matched to a WinGet package by name.";
-                    }
-                    else if (result.StoreId != null)
-                    {
-                        item.Id = result.StoreId.Id;
-                        item.Source = "msstore";
-                        item.InstallType = "msstore";
-                        item.MatchConfidence = result.StoreId.Confidence;
-                        item.Notes = result.StoreId.Confidence == MatchConfidence.Loose
-                            ? "Matched to a Microsoft Store product ID by a loose name match. Worth a quick check."
-                            : "Matched to a Microsoft Store product ID.";
-                    }
-                    else if (item.IsWinget)
-                    {
-                        item.InstallType = "manual";
-                        item.Source = "winget";
-                        item.Notes = "WinGet reported this app, but its package ID could not be resolved. Reinstall it manually.";
-                    }
-                    else if (item.IsStore)
-                    {
-                        item.Notes = "Store app could not be matched automatically. Reinstall it from the Microsoft Store.";
-                    }
-                    else
-                    {
-                        item.Notes = "No WinGet package found. Reinstall manually.";
-                    }
-                    AppClassifier.ApplyClassification(item);
+                    RestoreLookupState(item, baselines[item]);
+                    ApplyResolution(item, result);
                 }
+
+                // The real answer always wins, and is what goes back to disk.
+                _names.Set(item.Name, item.Publisher,
+                    result.WingetId?.Id,
+                    result.StoreId?.Id,
+                    result.WingetId?.Confidence ?? result.StoreId?.Confidence ?? MatchConfidence.None);
 
                 int current = Interlocked.Increment(ref done);
                 if (current == resolveTargets.Count || current % 4 == 0)
@@ -137,6 +127,9 @@ public sealed class ScanService
                         false);
                 }
             }).ConfigureAwait(false);
+
+            // A cancelled scan throws out of the loop above, so only a finished one saves.
+            _names.Save();
         }
 
         lock (gate)
@@ -327,6 +320,70 @@ public sealed class ScanService
         return new ResolveResult(null, null);
     }
 
+    /// <summary>
+    /// Puts one lookup answer onto a row. Cached answers and fresh ones go through here, so both
+    /// leave the same ID, type, confidence, and note behind.
+    /// </summary>
+    internal static void ApplyResolution(AppItem item, ResolveResult result)
+    {
+        if (result.WingetId != null)
+        {
+            item.Id = result.WingetId.Id;
+            item.Source = "winget";
+            item.InstallType = "winget";
+            item.MatchConfidence = result.WingetId.Confidence;
+            item.Notes = result.WingetId.Confidence == MatchConfidence.Loose
+                ? "Matched to a WinGet package by a loose name match. Worth a quick check."
+                : "Matched to a WinGet package by name.";
+        }
+        else if (result.StoreId != null)
+        {
+            item.Id = result.StoreId.Id;
+            item.Source = "msstore";
+            item.InstallType = "msstore";
+            item.MatchConfidence = result.StoreId.Confidence;
+            item.Notes = result.StoreId.Confidence == MatchConfidence.Loose
+                ? "Matched to a Microsoft Store product ID by a loose name match. Worth a quick check."
+                : "Matched to a Microsoft Store product ID.";
+        }
+        else if (item.IsWinget)
+        {
+            item.Id = "";
+            item.InstallType = "manual";
+            item.Source = "winget";
+            item.MatchConfidence = MatchConfidence.None;
+            item.Notes = "WinGet reported this app, but its package ID could not be resolved. Reinstall it manually.";
+        }
+        else if (item.IsStore)
+        {
+            // A remembered Store ID is being dropped, so put the package back how it was found.
+            item.Id = item.PackageFamilyName.Length > 0 ? "MSIX\\" + item.PackageFamilyName : "";
+            item.Source = "msix";
+            item.InstallType = "manual";
+            item.MatchConfidence = MatchConfidence.None;
+            item.Notes = "Store app could not be matched automatically. Reinstall it from the Microsoft Store.";
+        }
+        else
+        {
+            item.Notes = "No WinGet package found. Reinstall manually.";
+        }
+        AppClassifier.ApplyClassification(item);
+    }
+
+    private static ResolveResult FromCache(NameCacheEntry entry)
+        => new(
+            entry.WingetId == null ? null : new NameMatch(entry.WingetId, entry.Confidence),
+            entry.StoreId == null ? null : new NameMatch(entry.StoreId, entry.Confidence));
+
+    private static void RestoreLookupState(AppItem item, AppItem pristine)
+    {
+        item.Id = pristine.Id;
+        item.Source = pristine.Source;
+        item.InstallType = pristine.InstallType;
+        item.MatchConfidence = pristine.MatchConfidence;
+        item.Notes = pristine.Notes;
+    }
+
     private static void DeduplicateById(Dictionary<string, AppItem> items)
     {
         var byId = new Dictionary<string, AppItem>(StringComparer.OrdinalIgnoreCase);
@@ -360,5 +417,5 @@ public sealed class ScanService
     }
 
     private sealed record SourceBatch(string Name, IReadOnlyList<AppItem> Items, string? Warning);
-    private sealed record ResolveResult(NameMatch? WingetId, NameMatch? StoreId);
+    internal sealed record ResolveResult(NameMatch? WingetId, NameMatch? StoreId);
 }
