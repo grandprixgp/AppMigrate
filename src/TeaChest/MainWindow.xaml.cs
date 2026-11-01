@@ -121,32 +121,31 @@ public partial class MainWindow : Window
         _nearby.UseMissingAsInstallList();
     }
 
-    private async void OpenButton_Click(object sender, RoutedEventArgs e)
+    private string? PickManifestFile()
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Open app migration manifest",
+            Title = "Open TeaChest manifest",
             Filter = "JSON manifest (*.json)|*.json|All files (*.*)|*.*",
             CheckFileExists = true
         };
-        if (dialog.ShowDialog(this) == true)
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
+
+    private async void OpenButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (PickManifestFile() is { } path)
         {
-            await _viewModel.LoadManifestAsync(dialog.FileName);
+            await _viewModel.LoadManifestAsync(path);
             CollectNav.IsChecked = true;
         }
     }
 
     private async void LoadButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog
+        if (PickManifestFile() is { } path)
         {
-            Title = "Open app migration manifest",
-            Filter = "JSON manifest (*.json)|*.json|All files (*.*)|*.*",
-            CheckFileExists = true
-        };
-        if (dialog.ShowDialog(this) == true)
-        {
-            await _viewModel.LoadManifestAsync(dialog.FileName);
+            await _viewModel.LoadManifestAsync(path);
         }
     }
 
@@ -155,7 +154,7 @@ public partial class MainWindow : Window
         string initial = _viewModel.ManifestPath.Length > 0 ? _viewModel.ManifestPath : _viewModel.DefaultManifestPath;
         var dialog = new SaveFileDialog
         {
-            Title = "Save app migration manifest",
+            Title = "Save TeaChest manifest",
             Filter = "JSON manifest (*.json)|*.json|All files (*.*)|*.*",
             DefaultExt = "json",
             AddExtension = true,

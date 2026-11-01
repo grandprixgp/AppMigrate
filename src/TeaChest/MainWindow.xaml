@@ -95,7 +95,6 @@
                             Padding="10,6"
                             Click="ThemeButton_Click" />
                     <TextBlock x:Name="VersionText"
-                               Text="v1.3.0"
                                Style="{StaticResource Caption}"
                                Margin="10,8,0,0"
                                Opacity="0.7" />
@@ -304,7 +303,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="105" IsReadOnly="True" SortMemberPath="Category" />
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="125" IsReadOnly="True" SortMemberPath="Category" />
                                     <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="116" IsReadOnly="True" SortMemberPath="Version" ElementStyle="{StaticResource GridCellText}" />
                                     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="290" IsReadOnly="True" SortMemberPath="Id" ElementStyle="{StaticResource GridCellText}" />
                                     <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" IsReadOnly="True" SortMemberPath="Notes" ElementStyle="{StaticResource GridCellText}" />

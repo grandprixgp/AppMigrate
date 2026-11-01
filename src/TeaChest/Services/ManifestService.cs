@@ -27,7 +27,7 @@ public sealed class ManifestService
     {
         await using FileStream stream = File.OpenRead(path);
         ManifestDocument? document = await JsonSerializer.DeserializeAsync<ManifestDocument>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
-        if (document == null) throw new InvalidDataException("The file is not a valid app migration manifest.");
+        if (document == null) throw new InvalidDataException("This file isn't a valid TeaChest manifest.");
         document.LoadWarnings = ManifestSanitizer.Sanitize(document, ManifestTrust.LocalFile);
         return document;
     }
