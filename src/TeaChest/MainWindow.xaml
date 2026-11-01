@@ -46,43 +46,10 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                    <Border Width="42" Height="42" CornerRadius="11" ClipToBounds="True">
-                        <Viewbox Stretch="Uniform">
-                            <Grid Width="256" Height="256">
-                                <Border CornerRadius="48">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#0A1A33" Offset="0" />
-                                            <GradientStop Color="#0E7C86" Offset="1" />
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                </Border>
-                                <Path Data="M 42,64 L 196,64"
-                                      Stroke="#F8FDFF"
-                                      StrokeThickness="20"
-                                      StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round" />
-                                <Path Data="M 184,32 L 230,64 L 184,96 Z" Fill="#F8FDFF" />
-                                <Border Width="86" Height="94"
-                                        HorizontalAlignment="Left"
-                                        VerticalAlignment="Bottom"
-                                        Margin="32,0,0,30"
-                                        CornerRadius="18"
-                                        Background="#F3FBFF" />
-                                <Border Width="86" Height="94"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Bottom"
-                                        Margin="0,0,32,30"
-                                        CornerRadius="18"
-                                        Background="#65E6F2"
-                                        BorderBrush="#66FFFFFF"
-                                        BorderThickness="2" />
-                            </Grid>
-                        </Viewbox>
-                    </Border>
+                    <Image Width="42" Height="42" Source="Assets/TeaChest.png" RenderOptions.BitmapScalingMode="HighQuality" />
                     <StackPanel Margin="12,1,0,0" VerticalAlignment="Center">
                         <TextBlock Text="TeaChest" Style="{StaticResource H2}" />
-                        <TextBlock Text="Windows migration" Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                        <TextBlock Text="New PC, same apps" Style="{StaticResource Caption}" Margin="0,2,0,0" />
                     </StackPanel>
                 </StackPanel>
 
@@ -128,7 +95,7 @@
                             Padding="10,6"
                             Click="ThemeButton_Click" />
                     <TextBlock x:Name="VersionText"
-                               Text="v1.2.0"
+                               Text="v1.3.0"
                                Style="{StaticResource Caption}"
                                Margin="10,8,0,0"
                                Opacity="0.7" />
