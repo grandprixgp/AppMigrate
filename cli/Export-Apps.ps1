@@ -6,12 +6,12 @@
 .DESCRIPTION
     Run this on the old PC. It detects WinGet packages, Microsoft Store/MSIX apps,
     and classic desktop apps (via the uninstall registry). It then lets you review
-    which apps to keep and writes apps.json, apps.csv, and apps.md.
+    which apps to keep and writes teachest.json, teachest.csv, and teachest.md.
 
     The generated manifest can be copied with Install-Apps.ps1 to a new Windows PC.
 
 .PARAMETER OutFile
-    Path for the JSON manifest. apps.csv and apps.md are written beside it.
+    Path for the JSON manifest. teachest.csv and teachest.md are written beside it.
 
 .PARAMETER LiveJson
     Write periodic live scan snapshots here. Used by the GUI to populate the
@@ -44,7 +44,7 @@
     .\Export-Apps.ps1 -Review
 
 .EXAMPLE
-    .\Export-Apps.ps1 -IncludeAll -OutFile C:\Temp\apps.json
+    .\Export-Apps.ps1 -IncludeAll -OutFile C:\Temp\teachest.json
 
 .NOTES
     Windows PowerShell 5.1+ or PowerShell 7+. Run on Windows 10/11 with WinGet.
@@ -68,7 +68,7 @@ $script:StoreResolveCache = @{}
 
 if (-not $OutFile) {
     $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-    $OutFile = Join-Path $scriptDir 'apps.json'
+    $OutFile = Join-Path $scriptDir 'teachest.json'
 }
 $OutFile = [IO.Path]::GetFullPath($OutFile)
 
@@ -824,7 +824,7 @@ function Show-AppReview {
 
         Clear-Host
         Write-Host ''
-        Write-Host '  APP MIGRATION - REVIEW' -ForegroundColor Cyan
+        Write-Host '  TEACHEST - REVIEW' -ForegroundColor Cyan
         Write-Host ("  Selected: {0} of {1} detected" -f @($Apps | Where-Object { $_.include }).Count, $Apps.Count) -ForegroundColor Green
         if ($filter) { Write-Host ("  Filter: '{0}'  ({1} matches)" -f $filter, $visible.Count) -ForegroundColor Yellow }
         Write-Host ''
@@ -1119,7 +1119,7 @@ function Write-LiveSnapshot {
 # ---------------------------------------------------------------------------
 
 Write-Host ''
-Write-Host '  APP MIGRATION - EXPORT' -ForegroundColor Cyan
+Write-Host '  TEACHEST - EXPORT' -ForegroundColor Cyan
 Write-Host '  Scanning installed applications...' -ForegroundColor DarkGray
 
 $winget = Get-Command winget -ErrorAction SilentlyContinue
@@ -1320,7 +1320,7 @@ foreach ($app in $merged) {
             $app.notes = 'Store/MSIX app. Reinstall it from the Microsoft Store.'
         }
         else {
-            $app.notes = 'No WinGet package found. Reinstall manually or add DownloadUrl/Sha256 to apps.csv.'
+            $app.notes = 'No WinGet package found. Reinstall manually or add DownloadUrl/Sha256 to teachest.csv.'
         }
     }
     $runtime = ($app.category -eq 'Runtime')
@@ -1379,7 +1379,7 @@ Write-Host ("    {0}  (edit Include and optional download fields in a spreadshee
 Write-Host ("    {0}  (human-readable checklist)" -f $result.Md) -ForegroundColor White
 Write-Host ''
 Write-Host '  Next steps:' -ForegroundColor Cyan
-Write-Host '    1. Copy this folder (or at least apps.json and Install-Apps.ps1) to the new PC.'
+Write-Host '    1. Copy this folder (or at least teachest.json and Install-Apps.ps1) to the new PC.'
 Write-Host '    2. On the new PC:  .\Install-Apps.ps1 -Plan'
 Write-Host '    3. Then run:       .\Install-Apps.ps1'
 Write-Host ''

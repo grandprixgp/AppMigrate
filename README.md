@@ -1,14 +1,21 @@
-# AppMigrate
+# TeaChest
 
-<img src="docs/icon.png" width="76" align="right" alt="AppMigrate icon" />
+<img src="docs/icon.png" width="76" align="right" alt="TeaChest icon" />
 
 > **New PC, same apps.** Without the afternoon of digging through download pages trying to remember what you had installed.
 
-AppMigrate looks at the PC you're leaving, works out which apps you actually use, and rebuilds that set on a fresh Windows install using WinGet and the Microsoft Store. It's a small native Windows app: no scripts, no accounts, no cloud, and nothing phoning home.
+TeaChest looks at the PC you're leaving, works out which apps you actually use, and rebuilds that set on a fresh Windows install using WinGet and the Microsoft Store. It's a small native Windows app: no scripts, no accounts, no cloud, and nothing phoning home.
 
 If both PCs are on the same network, you don't even need to carry a file between them. The new PC can find the old one, pair with it, and ask *"what have you got that I don't?"*
 
-![AppMigrate dark theme](docs/screenshot-dark.png)
+![TeaChest dark theme](docs/screenshot-dark.png)
+
+## What's new in 1.3
+
+- **AppMigrate is now TeaChest.** New name, new icon, same app. Pack up the old PC, put the kettle on while the new one unpacks.
+- **Your setup comes with you.** Pairings, this PC's identity, and your theme move over from the old AppMigrate folder the first time you open TeaChest.
+- **TeaChest and AppMigrate 1.2 still talk to each other** over Nearby devices, so you don't have to upgrade the old PC first.
+- **Manifests are now called `teachest.json`.** Your existing `apps.json` files still work.
 
 ## What's new in 1.2
 
@@ -23,7 +30,7 @@ The full list is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Getting it
 
-Grab the latest build from the [Releases page](https://github.com/grandprixgp/AppMigrate/releases/latest). It's a single self-contained `.exe`, so there's no .NET runtime to install first. Pick `win-x64` for most PCs, or `win-arm64` for Snapdragon / Copilot+ machines.
+Grab the latest build from the [Releases page](https://github.com/grandprixgp/TeaChest/releases/latest). It's a single self-contained `.exe`, so there's no .NET runtime to install first. Pick `win-x64` for most PCs, or `win-arm64` for Snapdragon / Copilot+ machines.
 
 You'll need:
 
@@ -38,18 +45,18 @@ There are three steps, and the middle one is optional if you use Nearby devices.
 
 ### 1. Collect: on the old PC
 
-1. Open AppMigrate and click **Scan this PC**.
+1. Open TeaChest and click **Scan this PC**.
 2. Watch the list fill in. The registry, Store apps, and WinGet are all scanned at the same time, so this usually takes a few seconds.
 3. Search, filter, and tick the apps you want to keep. Runtimes, drivers, and things that ship with Windows start unticked, because you'd get those anyway.
 4. Click **Save manifest**.
 
-You get three files: `apps.json` (the one that matters), `apps.csv` for spreadsheet people, and `apps.md`, a tidy checklist you can read or print.
+You get three files: `teachest.json` (the one that matters), `teachest.csv` for spreadsheet people, and `teachest.md`, a tidy checklist you can read or print.
 
 ### 2. Move: get the list to the new PC
 
 Either:
 
-- copy `apps.json` across (USB stick, OneDrive, email to yourself, whatever's handy). AppMigrate picks up an `apps.json` sitting next to it automatically, or you can use **Load manifest...**, or
+- copy `teachest.json` across (USB stick, OneDrive, email to yourself, whatever's handy). TeaChest picks up a `teachest.json` (or an older `apps.json`) sitting next to it automatically, or you can use **Load manifest...**, or
 - skip the file and use [Nearby devices](#nearby-devices).
 
 ### 3. Install: on the new PC
@@ -80,7 +87,7 @@ manual-actions-YYYYMMDD-HHmmss.txt    your to-do list: manual installs, failures
 
 This is the fun bit. Instead of carrying a file around, you let the two PCs talk to each other directly.
 
-1. **On the old PC:** open **Nearby devices** and click **Share this PC**. The first time, Windows asks once (a UAC prompt) to let AppMigrate through the firewall on private networks.
+1. **On the old PC:** open **Nearby devices** and click **Share this PC**. The first time, Windows asks once (a UAC prompt) to let TeaChest through the firewall on private networks.
 2. **On the new PC:** open **Nearby devices**. The old PC should appear within a few seconds. Select it and click **Connect and compare**.
 3. **Both screens show the same 6-digit code.** If they match, click **Codes match, confirm** on the old PC.
 4. The new PC shows you three lists: apps that are **missing here**, apps that are **already here**, and apps that are **only on this PC**.
@@ -90,7 +97,7 @@ Next time, the two PCs recognise each other and skip the code.
 
 ### If the old PC doesn't show up
 
-- **Is the old PC's network set to Public?** Windows blocks incoming connections on Public networks, and AppMigrate will say so with a yellow warning and a button straight to the right setting. Home and office networks should be **Private**.
+- **Is the old PC's network set to Public?** Windows blocks incoming connections on Public networks, and TeaChest will say so with a yellow warning and a button straight to the right setting. Home and office networks should be **Private**.
 - **Guest Wi-Fi** often stops devices from seeing each other at all. Use the main network.
 - **No luck finding it?** Type the address shown on the old PC into **Connect by address** on the new one.
 - VPNs can get in the way, although Cloudflare WARP has worked fine in testing.
@@ -100,25 +107,27 @@ Next time, the two PCs recognise each other and skip the code.
 We've tried hard to make sure it is:
 
 - **Read-only.** The only thing a paired PC can ask for is the app list. It can't install anything, run anything, or browse files.
-- **Encrypted.** Everything goes over TLS between per-device certificates. Each certificate's key is stored in `%LOCALAPPDATA%\AppMigrate` and encrypted for your Windows account.
+- **Encrypted.** Everything goes over TLS between per-device certificates. Each certificate's key is stored in `%LOCALAPPDATA%\TeaChest` and encrypted for your Windows account.
 - **The code means something.** The 6 digits come from a commit-then-reveal exchange, so someone sitting in the middle of your network can't guess or force a matching code.
 - **Local only.** Connections from outside your local network are refused, and the firewall rule covers only this exe, Private networks, and your local subnet.
 - **Received lists are checked** before anything reaches WinGet: bad package IDs become manual items, and unexpected WinGet flags are stripped.
 - **It switches itself off** after 30 minutes without requests.
 
-To undo everything: delete `%LOCALAPPDATA%\AppMigrate` (that forgets the pairings) and, from an admin prompt, run
+To undo everything: delete `%LOCALAPPDATA%\TeaChest` (that forgets the pairings) and, from an admin prompt, run
 
 ```powershell
-netsh advfirewall firewall delete rule name="AppMigrate Nearby"
+netsh advfirewall firewall delete rule name="TeaChest Nearby"
 ```
+
+Moved over from AppMigrate? Its old `AppMigrate Nearby` rule is removed the first time you share with TeaChest.
 
 ## What it won't do (yet)
 
-AppMigrate moves *apps*, not your *stuff*. Specifically:
+TeaChest moves *apps*, not your *stuff*. Specifically:
 
 - **Data and settings don't come along:** documents, browser profiles, SSH keys, licence keys, app settings. OneDrive, your browser's sync, and a password manager cover most of this.
 - **Drivers, firmware, and Windows features** aren't treated as apps. Windows Update handles the first, and the others are usually one checkbox away.
-- **Steam, Epic, and GOG games** need re-downloading through their launchers. AppMigrate will happily reinstall the launchers themselves.
+- **Steam, Epic, and GOG games** need re-downloading through their launchers. TeaChest will happily reinstall the launchers themselves.
 - **Portable apps** with no uninstall entry are invisible to the scan.
 - **Store apps** may ask you to sign in.
 - **Download-based installer entries** in a manifest are handled by the `cli/` scripts, not the app.
@@ -133,11 +142,11 @@ AppMigrate moves *apps*, not your *stuff*. Specifically:
 2. **Store / AppX:** `PackageManager.FindPackagesForUser`, with proper display names and package families.
 3. **WinGet:** a single `winget list`, read into package IDs, versions, and sources.
 
-Apps that WinGet didn't already recognise are then matched by name, eight at a time. Exact names win, and loose matches are only accepted when there's exactly one candidate, so "Python 3.12" never quietly turns into Python 3.13. If WinGet cuts IDs short in its table output, AppMigrate fills them in from `winget export`.
+Apps that WinGet didn't already recognise are then matched by name, eight at a time. Exact names win, and loose matches are only accepted when there's exactly one candidate, so "Python 3.12" never quietly turns into Python 3.13. If WinGet cuts IDs short in its table output, TeaChest fills them in from `winget export`.
 
 ### Every language WinGet speaks
 
-WinGet's table output is translated, so AppMigrate doesn't look for words like "Name" or "Version". It finds the dashed line under the header and works out the columns from the spacing, counting double-width CJK characters properly. It's tested against WinGet's real headers in German, Japanese, Korean (the tricky one, since some titles contain spaces), and Traditional Chinese, and install results are read from WinGet's exit codes rather than its messages.
+WinGet's table output is translated, so TeaChest doesn't look for words like "Name" or "Version". It finds the dashed line under the header and works out the columns from the spacing, counting double-width CJK characters properly. It's tested against WinGet's real headers in German, Japanese, Korean (the tricky one, since some titles contain spaces), and Traditional Chinese, and install results are read from WinGet's exit codes rather than its messages.
 
 ### Installing
 
@@ -148,9 +157,9 @@ Every install is a plain `winget install --id <id> --exact`. No scripts are gene
 You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```powershell
-dotnet build AppMigrate.sln -c Release
-dotnet run --project .\src\AppMigrate
-dotnet test AppMigrate.sln
+dotnet build TeaChest.sln -c Release
+dotnet run --project .\src\TeaChest
+dotnet test TeaChest.sln
 ```
 
 To make a release build:
@@ -168,14 +177,14 @@ CI (`.github/workflows/build.yml`) builds, runs the tests, and publishes a `win-
 ### Finding your way around
 
 ```text
-src/AppMigrate/
+src/TeaChest/
   Models/            app records, the manifest format, classification rules
   Services/          registry, Store, WinGet, scanning, manifests, installing
   Services/Lan/      Nearby devices: discovery, pairing, the peer protocol, firewall
   ViewModels/        everything the UI binds to
   Themes/            dark and light palettes, control styles
   MainWindow.xaml    the UI itself
-tests/AppMigrate.Tests/   parser, install, manifest, and networking tests
+tests/TeaChest.Tests/   parser, install, manifest, and networking tests
 cli/                      the original PowerShell scripts, for automation
 tools/Make-Icon.ps1       regenerates the icon set
 build.ps1                 build and publish helper
@@ -191,7 +200,7 @@ cli\Install-Apps.cmd -Plan
 cli\Install-Apps.cmd
 ```
 
-They read and write the same `apps.json` format as the app (the CLI can also read `apps.csv`). Unlike the app, they do use a process-scoped execution-policy bypass.
+They read and write the same `teachest.json` format as the app (the CLI can also read `teachest.csv`). Unlike the app, they do use a process-scoped execution-policy bypass.
 
 ## Ideas for later
 
@@ -201,11 +210,11 @@ Things we'd love to get to. They're also sprinkled through the code as `TODO`s i
 - **Settings over Nearby:** carry app settings (VS Code, Windows Terminal, Git config) along with the app list, opt-in per app.
 - **A smart file explorer over Nearby** that suggests which folders are worth bringing across, based on what you actually use (the NTFS change journal knows).
 - **Instant rescans:** cache name lookups on disk, show them right away, and refresh them in the background so they never go stale.
-- **WinGet Configuration export,** so `winget configure` can rebuild a PC from an AppMigrate scan, no AppMigrate required.
+- **WinGet Configuration export,** so `winget configure` can rebuild a PC from a TeaChest scan, no TeaChest required.
 - **A "time machine":** quietly keep a dated manifest in OneDrive, because most migrations happen *after* a PC dies.
 - **A headless mode** in the main exe, so the PowerShell scripts can retire.
 - **A v2 tidy-up of the UI:** a proper details panel, live per-app status during installs, and a **Retry failed** button.
 
 ## Privacy
 
-There's no telemetry, analytics, or account. AppMigrate talks to Windows, to WinGet (which talks to its package sources), and, only while you're using Nearby devices, to the other PC on your network. That's it.
+There's no telemetry, analytics, or account. TeaChest talks to Windows, to WinGet (which talks to its package sources), and, only while you're using Nearby devices, to the other PC on your network. That's it.
