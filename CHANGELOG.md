@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+AppMigrate is now **TeaChest**. New name, new icon, same app.
+
+- The exe, the repository, and the release downloads are all called TeaChest now. Old links to `grandprixgp/AppMigrate` redirect here.
+- Pairings, this PC's identity, and your theme move from `%LOCALAPPDATA%\AppMigrate` to `%LOCALAPPDATA%\TeaChest` the first time you open it.
+- Nearby devices still works with PCs running AppMigrate 1.2.
+- New manifests are saved as `teachest.json`, `teachest.csv`, and `teachest.md`. An `apps.json` next to the exe is still picked up automatically, and the `cli/` scripts still find `apps.json` and `apps.csv`.
+- The firewall rule is now `TeaChest Nearby`. The first time you share, Windows asks once to add it, and the old `AppMigrate Nearby` rule is removed at the same time.
+- Fresh screenshots, which finally include Nearby devices in the sidebar.
+
 ## 1.2.0
 
 ### New: Nearby devices

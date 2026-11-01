@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds and publishes AppMigrate.
+    Builds and publishes TeaChest.
 
 .DESCRIPTION
     Produces a self-contained single-file Windows build by default, so a fresh
@@ -24,7 +24,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-$project = Join-Path $root 'src\AppMigrate\AppMigrate.csproj'
+$project = Join-Path $root 'src\TeaChest\TeaChest.csproj'
 
 $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
 $dotnet = if ($dotnetCommand) { $dotnetCommand.Source } else { $null }
@@ -60,15 +60,15 @@ else {
     $arguments += '-p:EnableCompressionInSingleFile=false'
 }
 
-Write-Host "Publishing AppMigrate ($Runtime, $(if ($FrameworkDependent) { 'framework-dependent' } else { 'self-contained' }))..." -ForegroundColor Cyan
+Write-Host "Publishing TeaChest ($Runtime, $(if ($FrameworkDependent) { 'framework-dependent' } else { 'self-contained' }))..." -ForegroundColor Cyan
 & $dotnet @arguments
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 
-$exe = Join-Path $output 'AppMigrate.exe'
-if (-not (Test-Path -LiteralPath $exe)) { throw "Publish completed, but AppMigrate.exe was not found in $output." }
+$exe = Join-Path $output 'TeaChest.exe'
+if (-not (Test-Path -LiteralPath $exe)) { throw "Publish completed, but TeaChest.exe was not found in $output." }
 
 if (-not $NoZip) {
-    $zip = Join-Path $root "dist\AppMigrate-$Runtime.zip"
+    $zip = Join-Path $root "dist\TeaChest-$Runtime.zip"
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
     $attempt = 0
     while ($true) {
