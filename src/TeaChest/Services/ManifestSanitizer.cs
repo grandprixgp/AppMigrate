@@ -91,6 +91,7 @@ public static class ManifestSanitizer
             // Also clear the source, or classification would promote it back to a package install.
             record.Source = "manifest";
             record.Notes = "The package ID in the manifest was not valid. Reinstall manually.";
+            record.MatchConfidence = MatchConfidence.None;
         }
 
         if (string.IsNullOrWhiteSpace(record.WingetArgs)) return;
