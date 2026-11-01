@@ -9,6 +9,9 @@ dist/
 apps.json
 apps.csv
 apps.md
+teachest.json
+teachest.csv
+teachest.md
 install-log-*.txt
 install-report-*.json
 manual-actions-*.txt

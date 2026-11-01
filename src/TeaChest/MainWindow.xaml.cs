@@ -40,9 +40,9 @@ public partial class MainWindow : Window
         UpdateThemeButton();
         VersionText.Text = _viewModel.VersionText;
 
-        if (File.Exists(_viewModel.DefaultManifestPath))
+        if (ManifestService.FindDefault(AppContext.BaseDirectory) is { } manifest)
         {
-            await _viewModel.LoadManifestAsync(_viewModel.DefaultManifestPath);
+            await _viewModel.LoadManifestAsync(manifest);
         }
     }
 

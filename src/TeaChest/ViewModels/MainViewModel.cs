@@ -90,7 +90,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ClearVisibleCommand = new RelayCommand(() => SetVisibleSelection(false), () => !IsBusy && TotalCount > 0);
         RestoreDefaultsCommand = new RelayCommand(RestoreDefaults, () => !IsBusy && TotalCount > 0);
 
-        DefaultManifestPath = Path.Combine(AppContext.BaseDirectory, "apps.json");
+        DefaultManifestPath = Path.Combine(AppContext.BaseDirectory, ManifestService.DefaultFileName);
         VersionText = "v" + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
     }
 
