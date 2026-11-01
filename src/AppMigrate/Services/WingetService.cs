@@ -157,7 +157,8 @@ public sealed class WingetService
             }
             if (matchScope && (app.Scope == "user" || app.Scope == "machine")) args.Add("--scope");
             if (matchScope && (app.Scope == "user" || app.Scope == "machine")) args.Add(app.Scope);
-            if (pinVersion && !string.IsNullOrWhiteSpace(app.Version))
+            // winget lists ranges such as "> 270.4" or "Unknown"; only pin real version numbers.
+            if (pinVersion && app.Version.Length > 0 && char.IsDigit(app.Version[0]))
             {
                 args.Add("--version");
                 args.Add(app.Version);
