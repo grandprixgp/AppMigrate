@@ -11,6 +11,10 @@ public sealed class ManifestDocument
     public string WindowsVersion { get; set; } = Environment.OSVersion.VersionString;
     public ManifestStats Stats { get; set; } = new();
     public List<AppRecord> Apps { get; set; } = new();
+
+    /// <summary>Problems found while validating a loaded manifest. Not saved.</summary>
+    [JsonIgnore]
+    public List<string> LoadWarnings { get; set; } = new();
 }
 
 public sealed class ManifestStats

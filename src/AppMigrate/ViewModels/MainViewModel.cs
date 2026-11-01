@@ -350,6 +350,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             PlanSummary = "Preview a plan to see what will be installed.";
             StatusText = $"Loaded {items.Count} apps · {SelectedCount} selected";
             AppendLog($"Loaded manifest: {ManifestPath}");
+            foreach (string warning in document.LoadWarnings) AppendLog("WARN: " + warning);
+            if (document.LoadWarnings.Count > 0) StatusText += $" · {document.LoadWarnings.Count} warning(s), see log";
         }
         catch (Exception ex)
         {
