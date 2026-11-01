@@ -46,6 +46,17 @@ The app writes:
 
 Copy `apps.json` to the new PC. The app auto-loads `apps.json` from its own folder on startup, or use **Load manifest...**.
 
+Or skip the file entirely if both PCs are on the same network:
+
+1. On the old PC, open **Nearby devices** and click **Share this PC**. The first time, Windows asks once (UAC) to allow AppMigrate through the firewall on private networks.
+2. On the new PC, open **Nearby devices**, pick the old PC, and click **Connect and compare**.
+3. Both screens show the same 6-digit code. If they match, click **Codes match, confirm** on the old PC.
+4. Review what's missing on the new PC, then click **Install missing apps...** to send them to the Install tab.
+
+Paired PCs remember each other, so later connections skip the code. If the old PC doesn't show up (guest Wi-Fi, VPN, a network set to Public), type the address shown on the old PC under **Connect by address**.
+
+Sharing is read-only: a paired PC can download the app list and nothing else. The connection is TLS between per-device certificates, the pairing code comes from a commit/reveal exchange so it can't be guessed by someone in the middle, and anything received is sanitized before it can reach WinGet. Sharing turns itself off after 30 minutes without requests.
+
 ### 3. Install on the new PC
 
 1. Open the **Install apps** tab.
@@ -68,6 +79,8 @@ install-log-YYYYMMDD-HHmmss.txt
 install-report-YYYYMMDD-HHmmss.json
 manual-actions-YYYYMMDD-HHmmss.txt
 ```
+
+The log is written as the install runs, and **Cancel** stops after the current app and still writes a report of what ran and what didn't. Apps that installed but need a restart are reported as such instead of as failures. Loaded manifests are checked first: invalid package IDs become manual items, and unusual WinGet arguments are flagged in the log.
 
 ## Build from source
 
@@ -168,4 +181,10 @@ Release binaries are unsigned unless you add code signing. Expect SmartScreen to
 
 ## CI
 
-`.github/workflows/build.yml` builds the solution and publishes a framework-dependent `win-x64` artifact on every push and pull request.
+`.github/workflows/build.yml` builds the solution, runs the tests, and publishes a framework-dependent `win-x64` artifact on every push and pull request.
+
+Run the tests locally with:
+
+```powershell
+dotnet test AppMigrate.sln
+```
