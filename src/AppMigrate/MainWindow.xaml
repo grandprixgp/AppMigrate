@@ -128,7 +128,7 @@
                             Padding="10,6"
                             Click="ThemeButton_Click" />
                     <TextBlock x:Name="VersionText"
-                               Text="v1.1.0"
+                               Text="v1.2.0"
                                Style="{StaticResource Caption}"
                                Margin="10,8,0,0"
                                Opacity="0.7" />
