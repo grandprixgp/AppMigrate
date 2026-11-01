@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # A tag that disagrees with the exe's version would ship the wrong
+      # download, so stop before anything is built.
+      - name: Check the tag matches the version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          [xml]$project = Get-Content -LiteralPath 'src/TeaChest/TeaChest.csproj' -Raw
+          $declared = @($project.Project.PropertyGroup.Version) |
+            Where-Object { $_ } |
+            Select-Object -First 1
+          if (-not $declared) {
+            throw 'No <Version> found in src/TeaChest/TeaChest.csproj.'
+          }
+          if ($declared.Trim() -ne $version) {
+            throw "Tag $env:GITHUB_REF_NAME does not match <Version>$($declared.Trim())</Version> in src/TeaChest/TeaChest.csproj."
+          }
+          Write-Host "Tag $env:GITHUB_REF_NAME matches version $version."
+
+      - name: Restore
+        run: dotnet restore TeaChest.sln
+
+      - name: Build
+        run: dotnet build TeaChest.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test TeaChest.sln -c Release --no-build --logger "console;verbosity=normal"
+
+      - name: Publish win-x64
+        run: .\build.ps1
+
+      - name: Publish win-arm64
+        run: .\build.ps1 -Runtime win-arm64
+
+      # The table matches the one on the v1.3.0 release page, so downloads
+      # look the same wherever the release came from.
+      - name: Write the checksum table
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $x64 = (Get-FileHash -LiteralPath 'dist/TeaChest-win-x64.zip' -Algorithm SHA256).Hash
+          $arm64 = (Get-FileHash -LiteralPath 'dist/TeaChest-win-arm64.zip' -Algorithm SHA256).Hash
+          $notes = @(
+            '## Downloads'
+            ''
+            'Both are single self-contained exes, so no .NET install is needed. Pick **win-x64** for most PCs and **win-arm64** for Snapdragon / Copilot+ machines. The build isn''t code-signed yet, so SmartScreen may ask: **More info → Run anyway**.'
+            ''
+            '| File | SHA-256 |'
+            '|---|---|'
+            ('| `TeaChest-win-x64.zip` | `' + $x64 + '` |')
+            ('| `TeaChest-win-arm64.zip` | `' + $arm64 + '` |')
+          ) -join "`n"
+          Set-Content -LiteralPath 'dist/release-notes.md' -Value $notes -Encoding utf8
+          Get-Content -LiteralPath 'dist/release-notes.md'
+
+      # Draft only: a person writes the notes and publishes it.
+      - name: Create the draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          gh release create $env:GITHUB_REF_NAME `
+            'dist/TeaChest-win-x64.zip' `
+            'dist/TeaChest-win-arm64.zip' `
+            --draft `
+            --verify-tag `
+            --title "TeaChest $version" `
+            --notes-file 'dist/release-notes.md'
