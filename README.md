@@ -118,7 +118,8 @@ To undo everything: delete `%LOCALAPPDATA%\TeaChest` (that forgets the pairings)
 ```powershell
 netsh advfirewall firewall delete rule name="TeaChest Nearby"
 ```
-Moved over from AppMigrate? Its firewall rule is removed the first time you share with TeaChest, and the next rule is added as `TeaChest Nearby`.
+
+Moved over from AppMigrate? Its old `AppMigrate Nearby` rule is removed the first time you share with TeaChest.
 
 ## What it won't do (yet)
 
