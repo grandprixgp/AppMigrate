@@ -603,22 +603,35 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     // The name is the stable key: a package ID can appear or change when a lookup resolves mid-scan.
-    private static string AppKey(AppItem app)
+    internal static string AppKey(AppItem app)
     {
         string key = TextUtil.NormalizeStrict(app.Name);
         return key.Length > 0 ? key : app.IdentityKey;
     }
 
-    private static bool HasSameContent(AppItem current, AppItem next)
+    // Every writable field is compared: a later source can fill in only a hidden one, and keeping
+    // the old instance would then drop that data from the grid, the saved manifest, and matching.
+    internal static bool HasSameContent(AppItem current, AppItem next)
         => string.Equals(current.Name, next.Name, StringComparison.Ordinal)
            && string.Equals(current.Id, next.Id, StringComparison.Ordinal)
            && string.Equals(current.Source, next.Source, StringComparison.Ordinal)
            && string.Equals(current.InstallType, next.InstallType, StringComparison.Ordinal)
            && string.Equals(current.Version, next.Version, StringComparison.Ordinal)
            && string.Equals(current.Publisher, next.Publisher, StringComparison.Ordinal)
+           && string.Equals(current.Scope, next.Scope, StringComparison.Ordinal)
+           && string.Equals(current.PackageFamilyName, next.PackageFamilyName, StringComparison.Ordinal)
+           && string.Equals(current.PackageFullName, next.PackageFullName, StringComparison.Ordinal)
            && string.Equals(current.Category, next.Category, StringComparison.Ordinal)
            && string.Equals(current.Notes, next.Notes, StringComparison.Ordinal)
-           && string.Equals(current.Scope, next.Scope, StringComparison.Ordinal)
+           && string.Equals(current.UninstallString, next.UninstallString, StringComparison.Ordinal)
+           && string.Equals(current.InstallLocation, next.InstallLocation, StringComparison.Ordinal)
+           && string.Equals(current.StoreSearchName, next.StoreSearchName, StringComparison.Ordinal)
+           && string.Equals(current.DownloadUrl, next.DownloadUrl, StringComparison.Ordinal)
+           && string.Equals(current.Sha256, next.Sha256, StringComparison.Ordinal)
+           && string.Equals(current.InstallerType, next.InstallerType, StringComparison.Ordinal)
+           && string.Equals(current.InstallerArgs, next.InstallerArgs, StringComparison.Ordinal)
+           && string.Equals(current.WingetArgs, next.WingetArgs, StringComparison.Ordinal)
+           && current.DefaultSelected == next.DefaultSelected
            && current.IsSelected == next.IsSelected;
 
     private void ReplaceApps(IEnumerable<AppItem> items)
