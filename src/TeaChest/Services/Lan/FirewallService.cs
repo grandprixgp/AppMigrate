@@ -57,18 +57,38 @@ public static class FirewallService
     /// <summary>Runs inside the elevated process. Returns the process exit code.</summary>
     public static int ConfigureElevated()
     {
-        RunNetsh("advfirewall", "firewall", "delete", "rule", $"name={RuleName}");
-        // Leftover from an AppMigrate install. It points at the old exe, so nothing needs it now.
-        RunNetsh("advfirewall", "firewall", "delete", "rule", $"name={LegacyRuleName}");
-        int tcp = RunNetsh(AddRule("TCP"));
-        int udp = RunNetsh(AddRule("UDP"));
+        IReadOnlyList<string[]> commands = BuildConfigureCommands(ExePath);
+        // Deleting first clears stale ports or a moved exe. A failed delete is fine: the rule may
+        // simply not exist yet, and the adds below are what matter.
+        RunNetsh(commands[0]);
+        RunNetsh(commands[1]);
+        int tcp = RunNetsh(commands[2]);
+        int udp = RunNetsh(commands[3]);
         return tcp != 0 ? tcp : udp;
     }
 
-    private static string[] AddRule(string protocol) => new[]
+    /// <summary>
+    /// The netsh calls <see cref="ConfigureElevated"/> makes, in order: delete the current rule,
+    /// delete the legacy rule, add TCP, add UDP. Kept separate so the arguments can be tested.
+    /// </summary>
+    internal static IReadOnlyList<string[]> BuildConfigureCommands(string exePath) => new[]
+    {
+        DeleteRule(RuleName),
+        // Leftover from an AppMigrate install. It points at the old exe, so nothing needs it now.
+        DeleteRule(LegacyRuleName),
+        AddRule(exePath, "TCP"),
+        AddRule(exePath, "UDP")
+    };
+
+    private static string[] DeleteRule(string name) => new[]
+    {
+        "advfirewall", "firewall", "delete", "rule", $"name={name}"
+    };
+
+    private static string[] AddRule(string exePath, string protocol) => new[]
     {
         "advfirewall", "firewall", "add", "rule",
-        $"name={RuleName}", "dir=in", "action=allow", $"program={ExePath}",
+        $"name={RuleName}", "dir=in", "action=allow", $"program={exePath}",
         "enable=yes", "profile=private", "remoteip=localsubnet", $"protocol={protocol}"
     };
 
