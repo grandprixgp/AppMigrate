@@ -115,6 +115,45 @@ public class ManifestDiffTests
     }
 
     [Fact]
+    public void IdOnTheOlderSideOnlyStillMatchesByName()
+    {
+        ManifestDocument before = Doc(Winget("Git", "Git.Git"));
+        ManifestDocument after = Doc(Manual("Git"));
+
+        InventoryDiffResult diff = InventoryDiff.CompareManifests(before, after);
+
+        Assert.Equal("Git.Git", Assert.Single(diff.AlreadyHere).Id);
+        Assert.Empty(diff.MissingHere);
+        Assert.Empty(diff.OnlyHere);
+    }
+
+    [Fact]
+    public void IdOnTheNewerSideOnlyStillMatchesByName()
+    {
+        ManifestDocument before = Doc(Manual("Git"));
+        ManifestDocument after = Doc(Winget("Git", "Git.Git"));
+
+        InventoryDiffResult diff = InventoryDiff.CompareManifests(before, after);
+
+        Assert.Equal("Git", Assert.Single(diff.AlreadyHere).Name);
+        Assert.Empty(diff.MissingHere);
+        Assert.Empty(diff.OnlyHere);
+    }
+
+    [Fact]
+    public void TwoIdRowsCanMatchOneNoIdRowByName()
+    {
+        ManifestDocument before = Doc(Winget("Foo", "A.Foo"), Winget("Foo", "B.Foo"));
+        ManifestDocument after = Doc(Manual("Foo"));
+
+        InventoryDiffResult diff = InventoryDiff.CompareManifests(before, after);
+
+        Assert.Equal(2, diff.AlreadyHere.Count);
+        Assert.Empty(diff.MissingHere);
+        Assert.Empty(diff.OnlyHere);
+    }
+
+    [Fact]
     public void KeepsTheManifestSelectionOnTheDiffedItems()
     {
         ManifestDocument before = Doc(new AppRecord { Name = "Git", Id = "Git.Git", Include = false });
