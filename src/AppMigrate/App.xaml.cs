@@ -17,6 +17,9 @@ public partial class App : Application
             return;
         }
 
+        // TODO: a proper headless mode right here - `AppMigrate.exe scan --out apps.json` and
+        // `AppMigrate.exe install apps.json --yes` - so the cli/ PowerShell scripts can retire and
+        // the same exe works in unattended setups (autounattend, Intune, a USB stick).
         base.OnStartup(e);
         var window = new MainWindow();
         MainWindow = window;
