@@ -44,6 +44,9 @@ public sealed class ManifestService
         };
     }
 
+    // TODO: also write a configuration.winget (WinGet Configuration / DSC YAML) next to apps.json.
+    // Then `winget configure apps.winget` or Dev Home could rebuild the PC without AppMigrate at
+    // all, which feels like the right kind of "no lock-in".
     public async Task SaveAsync(string path, IEnumerable<AppItem> apps, CancellationToken cancellationToken = default)
     {
         ManifestDocument document = CreateDocument(apps);

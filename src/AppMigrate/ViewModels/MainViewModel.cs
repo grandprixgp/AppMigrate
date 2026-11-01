@@ -64,6 +64,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _manualCount;
     private int _storeCount;
     private InstallReport? _lastReport;
+    private string _origin = "";
 
     public MainViewModel()
     {
@@ -148,13 +149,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         get => _manifestPath;
         private set
         {
-            if (SetField(ref _manifestPath, value)) OnPropertyChanged(nameof(ManifestLabel));
+            // Any scan or file load replaces apps that came from another device.
+            _origin = "";
+            SetField(ref _manifestPath, value);
+            OnPropertyChanged(nameof(ManifestLabel));
         }
     }
 
-    public string ManifestLabel => string.IsNullOrWhiteSpace(ManifestPath)
-        ? "Using the current selection (not saved)"
-        : ManifestPath;
+    public string ManifestLabel => !string.IsNullOrWhiteSpace(ManifestPath)
+        ? ManifestPath
+        : _origin.Length > 0
+            ? $"From {_origin} (not saved)"
+            : "Using the current selection (not saved)";
 
     public string PlanSummary
     {
@@ -364,6 +370,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Replaces the app list with items received from another device.</summary>
+    public bool LoadItems(IEnumerable<AppItem> items, string origin)
+    {
+        if (IsBusy) return false;
+        List<AppItem> list = items.ToList();
+        foreach (AppItem item in list) AppClassifier.ApplyClassification(item);
+        ReplaceApps(list);
+        ManifestPath = "";
+        _origin = origin;
+        OnPropertyChanged(nameof(ManifestLabel));
+        _lastPlan = null;
+        PlanItems.Clear();
+        NotifyPlanChanged();
+        PlanSummary = "Preview a plan to see what will be installed.";
+        StatusText = $"Loaded {list.Count} apps from {origin} · {SelectedCount} selected";
+        AppendLog($"Loaded {list.Count} apps from {origin}.");
+        return true;
+    }
+
+    /// <summary>The current app list as a manifest, for sharing with another device.</summary>
+    public ManifestDocument CreateShareDocument() => ManifestService.CreateDocument(Apps);
+
+    public void Log(string line) => AppendLog(line);
+
     public async Task SaveManifestAsync(string path)
     {
         if (IsBusy) return;
@@ -558,6 +588,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void ApplySnapshot(ScanSnapshot snapshot)
     {
+        // TODO: rebuilding the whole collection on every progress tick makes the grid jump back
+        // to the top mid-scan. Diff by IdentityKey and only add/update the rows that changed.
         ReplaceApps(snapshot.Apps);
         StatusText = snapshot.Status;
         IsProgressIndeterminate = snapshot.IsIndeterminate;

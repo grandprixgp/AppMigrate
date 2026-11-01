@@ -209,6 +209,8 @@ public sealed class WingetService
     /// </summary>
     internal static string? PickSearchId(string output, string candidate, bool storeOnly)
     {
+        // TODO: return how confident the match was (exact vs. loose) so the grid can flag
+        // guesses for a quick human check before anything gets installed.
         WingetTable? table = WingetTable.Parse(output);
         if (table == null || table.ColumnCount < 2) return null;
 
