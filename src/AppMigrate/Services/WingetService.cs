@@ -27,16 +27,20 @@ public sealed class WingetService
 
     public async Task<WingetInventory> GetInventoryAsync(CancellationToken cancellationToken)
     {
-        Task<IReadOnlyList<ExportedPackage>> exportTask = GetExportedPackagesAsync(cancellationToken);
         ProcessResult result = await ProcessRunner.RunAsync(
             "winget.exe",
             new[] { "list", "--accept-source-agreements", "--disable-interactivity" },
             null,
             TimeSpan.FromMinutes(2),
             cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<ExportedPackage> exported = await exportTask.ConfigureAwait(false);
 
-        IReadOnlyList<WingetRow> rows = RepairTruncatedIds(ParseList(result.Output), exported);
+        IReadOnlyList<WingetRow> rows = ParseList(result.Output);
+        // Newer winget versions print full IDs when redirected. Only pay for an export when the
+        // table actually truncated something.
+        IReadOnlyList<ExportedPackage> exported = rows.Any(r => r.IdTruncated)
+            ? await GetExportedPackagesAsync(cancellationToken).ConfigureAwait(false)
+            : Array.Empty<ExportedPackage>();
+        rows = RepairTruncatedIds(rows, exported);
         if (rows.Count == 0)
         {
             // A working winget always lists at least App Installer, so an empty table means the
