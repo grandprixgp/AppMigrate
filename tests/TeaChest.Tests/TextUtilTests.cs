@@ -28,6 +28,15 @@ public class TextUtilTests
         Assert.Equal("müllertool", TextUtil.NormalizeStrict("Müller Tool"));
     }
 
+    [Theory]
+    [InlineData("กิน", "กัน")]
+    [InlineData("कल", "काल")]
+    public void KeepsWordsApartWhenOnlyTheirVowelMarksDiffer(string first, string second)
+    {
+        Assert.NotEqual(TextUtil.NormalizeStrict(first), TextUtil.NormalizeStrict(second));
+        Assert.NotEqual(TextUtil.NormalizeLoose(first), TextUtil.NormalizeLoose(second));
+    }
+
     [Fact]
     public void KeepsNonLatinNamesApartInLooseFormToo()
     {

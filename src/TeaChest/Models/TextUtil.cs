@@ -9,8 +9,9 @@ public static class TextUtil
     private static readonly Regex VersionToken = new(@"\b(v?ersion\s*)?v?\d+(\.\d+){1,4}\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Architecture = new(@"\b(x64|x86|64-bit|32-bit|user|machine)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     // Keep letters and digits from every script, so non-Latin names still have a key.
+    // Marks stay too: in Thai and Hindi they're the vowels, so dropping them merges different words.
     // CleanAscii stays ASCII-only because that one is for package IDs.
-    private static readonly Regex NonAlphaNumeric = new(@"[^\p{L}\p{N}]+", RegexOptions.Compiled);
+    private static readonly Regex NonAlphaNumeric = new(@"[^\p{L}\p{M}\p{N}]+", RegexOptions.Compiled);
 
     public static string NormalizeLoose(string? value)
     {
