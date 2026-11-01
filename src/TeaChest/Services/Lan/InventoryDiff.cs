@@ -9,9 +9,10 @@ public sealed class InventoryDiffResult
     public List<AppItem> OnlyHere { get; } = new();
 }
 
-// TODO: "time machine" - quietly save a dated manifest to OneDrive every week or so, then let
-// people diff against any of them later. Most migrations happen *after* a PC dies, and by then
-// it's too late to scan it. This diff would work as-is on two saved manifests.
+// TODO: "time machine" scheduling - quietly saving a dated manifest to OneDrive every week or so
+// is still undecided: whether it's on by default, and whether it runs in the background or only
+// when the app opens. Most migrations happen *after* a PC dies, and by then it's too late to scan
+// it, so the saving matters more than the diff.
 public static class InventoryDiff
 {
     /// <summary>
