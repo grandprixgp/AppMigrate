@@ -1,6 +1,7 @@
 using System.Text.Json;
 using TeaChest.Models;
 using TeaChest.Services;
+using TeaChest.Services.Lan;
 
 namespace TeaChest.Tests;
 
@@ -125,6 +126,39 @@ public class MatchConfidenceTests
         Assert.Equal(MatchConfidence.None, document.Apps[0].ToItem().MatchConfidence);
     }
 
+    [Theory]
+    [InlineData("\"Fuzzy\"")]
+    [InlineData("99")]
+    [InlineData("\"99\"")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    public void UnknownConfidenceValuesLoadAsNone(string raw)
+    {
+        string json = $$"""
+        {
+          "apps": [
+            { "name": "Git", "id": "Git.Git", "source": "winget", "installType": "winget", "matchConfidence": {{raw}} },
+            { "name": "Next", "id": "Vendor.Next", "source": "winget", "installType": "winget" }
+          ]
+        }
+        """;
+
+        foreach (JsonSerializerOptions options in new[] { ManifestService.JsonOptions, LanProtocol.JsonOptions })
+        {
+            ManifestDocument? document = JsonSerializer.Deserialize<ManifestDocument>(json, options);
+
+            Assert.NotNull(document);
+            Assert.Equal(MatchConfidence.None, document!.Apps[0].MatchConfidence);
+            Assert.Equal(
+                ("Git", "Git.Git", "winget", "winget"),
+                (document.Apps[0].Name, document.Apps[0].Id, document.Apps[0].Source, document.Apps[0].InstallType));
+            Assert.Equal("Next", document.Apps[1].Name);
+            Assert.Equal("Vendor.Next", document.Apps[1].Id);
+            Assert.Equal(MatchConfidence.None, document.Apps[1].MatchConfidence);
+        }
+    }
+
     [Fact]
     public void FromItemAndToItemKeepConfidence()
     {
@@ -156,6 +190,59 @@ public class MatchConfidenceTests
 
         item.MergeFrom(new AppItem { Name = "Zoom" });
         Assert.Equal(MatchConfidence.Exact, item.MatchConfidence);
+    }
+
+    [Theory]
+    [InlineData(MatchConfidence.None, MatchConfidence.Loose, MatchConfidence.None)]
+    [InlineData(MatchConfidence.Loose, MatchConfidence.None, MatchConfidence.None)]
+    [InlineData(MatchConfidence.Exact, MatchConfidence.Loose, MatchConfidence.Exact)]
+    [InlineData(MatchConfidence.Loose, MatchConfidence.Exact, MatchConfidence.Exact)]
+    public void SameIdKeepsTheStrongerConfidence(
+        MatchConfidence current,
+        MatchConfidence incoming,
+        MatchConfidence expected)
+    {
+        var item = new AppItem { Name = "Zoom", Id = "Zoom.Zoom", MatchConfidence = current };
+
+        item.MergeFrom(new AppItem { Name = "Zoom", Id = "Zoom.Zoom", MatchConfidence = incoming });
+
+        Assert.Equal(expected, item.MatchConfidence);
+    }
+
+    [Fact]
+    public void DifferentIdsKeepThisItemsConfidence()
+    {
+        var loose = new AppItem { Name = "Zoom", Id = "Zoom.Zoom", MatchConfidence = MatchConfidence.Loose };
+        loose.MergeFrom(new AppItem { Name = "Zoom", Id = "Other.Zoom", MatchConfidence = MatchConfidence.Exact });
+        Assert.Equal(MatchConfidence.Loose, loose.MatchConfidence);
+
+        var proven = new AppItem { Name = "Zoom", Id = "Zoom.Zoom" };
+        proven.MergeFrom(new AppItem { Name = "Zoom", Id = "Other.Zoom", MatchConfidence = MatchConfidence.Loose });
+        Assert.Equal(MatchConfidence.None, proven.MatchConfidence);
+    }
+
+    [Fact]
+    public void InvalidIdDropsTheConfidence()
+    {
+        var document = new ManifestDocument
+        {
+            Apps = new List<AppRecord>
+            {
+                new()
+                {
+                    Name = "Evil",
+                    Id = "--override.x",
+                    Source = "winget",
+                    InstallType = "winget",
+                    MatchConfidence = MatchConfidence.Loose
+                }
+            }
+        };
+
+        ManifestSanitizer.Sanitize(document, ManifestTrust.LocalFile);
+
+        Assert.Equal("manual", document.Apps[0].InstallType);
+        Assert.Equal(MatchConfidence.None, document.Apps[0].MatchConfidence);
     }
 
     [Fact]
