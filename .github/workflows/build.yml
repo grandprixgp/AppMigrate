@@ -18,14 +18,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Restore
-        run: dotnet restore AppMigrate.sln
+        run: dotnet restore TeaChest.sln
       - name: Build
-        run: dotnet build AppMigrate.sln -c Release --no-restore
+        run: dotnet build TeaChest.sln -c Release --no-restore
       - name: Test
-        run: dotnet test AppMigrate.sln -c Release --no-build --logger "console;verbosity=normal"
+        run: dotnet test TeaChest.sln -c Release --no-build --logger "console;verbosity=normal"
       - name: Publish framework-dependent
         run: >
-          dotnet publish src/AppMigrate/AppMigrate.csproj
+          dotnet publish src/TeaChest/TeaChest.csproj
           -c Release -r win-x64 --self-contained false
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
@@ -33,6 +33,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AppMigrate-win-x64
+          name: TeaChest-win-x64
           path: dist/win-x64
           if-no-files-found: error

@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>TeaChest</AssemblyName>
+    <RootNamespace>TeaChest</RootNamespace>
+    <ApplicationIcon>Assets\TeaChest.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.2.0</Version>
+    <Product>TeaChest</Product>
+    <Title>TeaChest</Title>
+    <Authors>TeaChest contributors</Authors>
+    <Description>A fast, native Windows application migration tool.</Description>
+    <RepositoryType>git</RepositoryType>
+    <Platforms>AnyCPU</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\TeaChest.ico" />
+    <Resource Include="Assets\TeaChest.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TeaChest.Tests" />
+  </ItemGroup>
+
+</Project>

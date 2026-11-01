@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Generates the AppMigrate application icon and preview PNG.
+    Generates the TeaChest application icon and preview PNG.
 
 .DESCRIPTION
     Draws a vector-style mark with System.Drawing, then writes a multi-size ICO
@@ -15,10 +15,10 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
-$assetDir = Join-Path $root 'src\AppMigrate\Assets'
+$assetDir = Join-Path $root 'src\TeaChest\Assets'
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
-$pngPath = Join-Path $assetDir 'AppMigrate.png'
-$icoPath = Join-Path $assetDir 'AppMigrate.ico'
+$pngPath = Join-Path $assetDir 'TeaChest.png'
+$icoPath = Join-Path $assetDir 'TeaChest.ico'
 
 function New-RoundedPath {
     param([float]$X, [float]$Y, [float]$Width, [float]$Height, [float]$Radius)
