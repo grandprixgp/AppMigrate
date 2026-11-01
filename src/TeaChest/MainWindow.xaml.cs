@@ -189,18 +189,44 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!ConfirmInstall(plan.InstallCount, plan.SkipCount, plan.ManualCount)) return;
+
+        InstallReport? report = await _viewModel.InstallAsync();
+        if (report == null) return;
+        ShowInstallReport(report);
+    }
+
+    private async void RetryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.IsBusy) return;
+        int count = _viewModel.RetryCount;
+        if (count == 0) return;
+
+        // Confirm before the retry plan resets the rows, so declining changes nothing.
+        if (!ConfirmInstall(count, 0, 0)) return;
+
+        InstallReport? report = await _viewModel.RetryFailedAsync();
+        if (report == null) return;
+        ShowInstallReport(report);
+    }
+
+    private bool ConfirmInstall(int installCount, int skipCount, int manualCount)
+    {
+        string others = skipCount + manualCount > 0
+            ? $"The plan also contains {skipCount} already-present and {manualCount} manual item(s).\n\n"
+            : "";
         MessageBoxResult confirm = MessageBox.Show(this,
-            $"Install {plan.InstallCount} app(s) now?\n\n" +
-            $"The plan also contains {plan.SkipCount} already-present and {plan.ManualCount} manual item(s).\n\n" +
+            $"Install {installCount} app(s) now?\n\n" +
+            others +
             "This will change this PC.",
             "Confirm install",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
-        if (confirm != MessageBoxResult.Yes) return;
+        return confirm == MessageBoxResult.Yes;
+    }
 
-        InstallReport? report = await _viewModel.InstallAsync();
-        if (report == null) return;
-
+    private void ShowInstallReport(InstallReport report)
+    {
         string message = $"Installed: {report.Installed}\nAlready present: {report.AlreadyInstalled}\nManual: {report.Manual}\nFailed: {report.Failed}";
         if (report.RebootRequired > 0) message += $"\nInstalled, restart needed: {report.RebootRequired}";
         if (report.Cancelled) message += $"\nNot attempted (cancelled): {report.NotAttempted}";

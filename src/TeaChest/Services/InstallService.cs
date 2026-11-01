@@ -147,7 +147,6 @@ public sealed class InstallService
     /// </summary>
     // TODO: every machine-scope installer pops its own UAC prompt, which gets old fast with 40
     // apps. Offer a "restart as admin" button before a big batch.
-    // TODO: per-row status in the plan grid plus a "retry failed" button. The data's already here.
     public async Task<InstallReport> InstallAsync(
         InstallPlan plan,
         InstallOptions options,

@@ -176,6 +176,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (!SetField(ref _isBusy, value)) return;
             OnPropertyChanged(nameof(CanEdit));
             OnPropertyChanged(nameof(CanInstall));
+            NotifyRetryChanged();
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -277,6 +278,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     /// <summary>The failed rows in the current plan, ready for a retry. Empty before a run.</summary>
     public IReadOnlyList<PlanItem> FailedItems => SelectFailed(PlanItems);
+
+    public int RetryCount => FailedItems.Count;
+
+    /// <summary>Drives the Retry failed button: nothing to retry, or a run in progress, hides it.</summary>
+    public bool CanRetry => !IsBusy && RetryCount > 0;
+
+    public string RetryLabel => $"Retry {RetryCount} failed";
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<AppErrorEventArgs>? Error;
@@ -541,12 +549,31 @@ public sealed class MainViewModel : INotifyPropertyChanged
         finally
         {
             // Statuses changed outside NotifyPlanChanged, so the retry list needs its own nudge.
-            OnPropertyChanged(nameof(FailedItems));
+            NotifyRetryChanged();
             IsBusy = false;
             IsProgressIndeterminate = false;
             _cts?.Dispose();
             _cts = null;
         }
+    }
+
+    /// <summary>
+    /// Runs the rows that failed last time again, as their own plan, so a retry gets its own log and
+    /// report. The rows are reused in place, which is what lets successes drop off the retry list.
+    /// </summary>
+    public async Task<InstallReport?> RetryFailedAsync()
+    {
+        if (IsBusy) return null;
+        InstallPlan plan = BuildRetryPlan(PlanItems);
+        if (plan.InstallCount == 0)
+        {
+            Error?.Invoke(this, new AppErrorEventArgs("Nothing to retry", "No rows failed in the last run."));
+            return null;
+        }
+
+        _lastPlan = plan;
+        NotifyRetryChanged();
+        return await InstallAsync();
     }
 
     // The row carries its own plan item, so this needs no lookup and no guessing from the name.
@@ -559,6 +586,23 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     internal static IReadOnlyList<PlanItem> SelectFailed(IEnumerable<PlanItem> items)
         => items.Where(item => item.Status == "Failed").ToList();
+
+    /// <summary>
+    /// A plan of just the failed rows, always marked Install. The rows are the same objects, not
+    /// copies, so the retry updates the grid in place and the failed list reflects the new outcome.
+    /// </summary>
+    internal static InstallPlan BuildRetryPlan(IEnumerable<PlanItem> items)
+    {
+        var plan = new InstallPlan();
+        foreach (PlanItem item in SelectFailed(items))
+        {
+            item.Action = "Install";
+            item.Status = "";
+            item.StatusDetail = "";
+            plan.Items.Add(item);
+        }
+        return plan;
+    }
 
     public void Cancel()
     {
@@ -712,9 +756,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(HasPlan));
         OnPropertyChanged(nameof(InstallActionCount));
-        OnPropertyChanged(nameof(FailedItems));
+        NotifyRetryChanged();
         OnPropertyChanged(nameof(CanInstall));
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    private void NotifyRetryChanged()
+    {
+        OnPropertyChanged(nameof(FailedItems));
+        OnPropertyChanged(nameof(RetryCount));
+        OnPropertyChanged(nameof(CanRetry));
+        OnPropertyChanged(nameof(RetryLabel));
     }
 
     private void AppendLog(string line)

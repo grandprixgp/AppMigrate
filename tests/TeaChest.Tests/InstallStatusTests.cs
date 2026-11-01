@@ -130,7 +130,7 @@ public sealed class InstallStatusTests : IDisposable
         item.Status = "Installed";
 
         Assert.Equal(
-            new[] { nameof(PlanItem.Status), nameof(PlanItem.StatusDetail), nameof(PlanItem.Status) },
+            new[] { nameof(PlanItem.Status), nameof(PlanItem.StatusLabel), nameof(PlanItem.StatusDetail), nameof(PlanItem.Status), nameof(PlanItem.StatusLabel) },
             changed);
     }
 
