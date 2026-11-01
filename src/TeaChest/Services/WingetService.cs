@@ -9,19 +9,6 @@ namespace TeaChest.Services;
 public sealed record WingetRow(string Name, string Id, string Version, string Source, bool IdTruncated, bool NameTruncated, bool IsMsix, bool IsArp, string IdPrefix = "");
 public sealed record ExportedPackage(string Id, string Version, string Source);
 
-/// <summary>How much a package ID found by name can be trusted.</summary>
-public enum MatchConfidence
-{
-    /// <summary>Nothing was found, so there is no match to grade.</summary>
-    None,
-
-    /// <summary>The package name matched the app name exactly.</summary>
-    Exact,
-
-    /// <summary>The name matched a shortened or version-insensitive candidate, so it is a guess.</summary>
-    Loose
-}
-
 public sealed record NameMatch(string Id, MatchConfidence Confidence);
 public sealed record WingetInventory(IReadOnlyList<WingetRow> Rows, string? Warning, IReadOnlyList<ExportedPackage> Exported)
 {
@@ -148,7 +135,6 @@ public sealed class WingetService
             cancellationToken).ConfigureAwait(false);
 
         NameMatch? match = PickSearchMatch(result.Output, name, storeOnly: true);
-        if (match != null) match = match with { Confidence = Grade(name, name, match.Confidence) };
         _storeIdCache[name] = match;
         return match;
     }

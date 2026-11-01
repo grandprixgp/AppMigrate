@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
-using TeaChest.Services;
 
 namespace TeaChest.Models;
 
@@ -34,7 +33,7 @@ public sealed class AppRecord
     public string InstallType { get; set; } = "manual";
 
     /// <summary>How sure the name lookup was. Older manifests have no value, which means None.</summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(MatchConfidenceJsonConverter))]
     public MatchConfidence MatchConfidence { get; set; }
 
     public string Version { get; set; } = "";

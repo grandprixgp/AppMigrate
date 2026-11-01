@@ -1,8 +1,55 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using TeaChest.Services;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TeaChest.Models;
+
+/// <summary>How much a package ID found by name can be trusted.</summary>
+public enum MatchConfidence
+{
+    /// <summary>
+    /// No name guess was involved, because there is either no ID yet or the ID came from
+    /// WinGet's own inventory rather than a lookup.
+    /// </summary>
+    None,
+
+    /// <summary>The package name matched the app name exactly.</summary>
+    Exact,
+
+    /// <summary>The name matched a shortened or version-insensitive candidate, so it is a guess.</summary>
+    Loose
+}
+
+/// <summary>
+/// Reads confidence leniently: it is only a display hint, and a newer TeaChest may write a value
+/// this version does not know. Anything unrecognised becomes None instead of failing the file.
+/// </summary>
+internal sealed class MatchConfidenceJsonConverter : JsonConverter<MatchConfidence>
+{
+    public override bool HandleNull => true;
+
+    public override MatchConfidence Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            string? name = reader.GetString();
+            foreach (MatchConfidence value in Enum.GetValues<MatchConfidence>())
+            {
+                if (string.Equals(value.ToString(), name, StringComparison.OrdinalIgnoreCase)) return value;
+            }
+        }
+        else if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
+        {
+            // Consume the whole value so the records after it still line up.
+            reader.Skip();
+        }
+        return MatchConfidence.None;
+    }
+
+    public override void Write(Utf8JsonWriter writer, MatchConfidence value, JsonSerializerOptions options)
+        => writer.WriteStringValue(value.ToString());
+}
 
 public sealed class AppItem : INotifyPropertyChanged
 {
@@ -80,6 +127,7 @@ public sealed class AppItem : INotifyPropertyChanged
 
     public void MergeFrom(AppItem other)
     {
+        bool hadId = !string.IsNullOrWhiteSpace(Id);
         if (string.IsNullOrWhiteSpace(Name) && !string.IsNullOrWhiteSpace(other.Name)) Name = other.Name;
         if (string.IsNullOrWhiteSpace(Id) && !string.IsNullOrWhiteSpace(other.Id)) Id = other.Id;
         if (string.IsNullOrWhiteSpace(Version) && !string.IsNullOrWhiteSpace(other.Version)) Version = other.Version;
@@ -89,7 +137,16 @@ public sealed class AppItem : INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(PackageFullName) && !string.IsNullOrWhiteSpace(other.PackageFullName)) PackageFullName = other.PackageFullName;
         if (string.IsNullOrWhiteSpace(Category) && !string.IsNullOrWhiteSpace(other.Category)) Category = other.Category;
         if (string.IsNullOrWhiteSpace(Notes) && !string.IsNullOrWhiteSpace(other.Notes)) Notes = other.Notes;
-        if (MatchConfidence == MatchConfidence.None && other.MatchConfidence != MatchConfidence.None) MatchConfidence = other.MatchConfidence;
+        if (!hadId)
+        {
+            if (MatchConfidence == MatchConfidence.None && other.MatchConfidence != MatchConfidence.None) MatchConfidence = other.MatchConfidence;
+        }
+        else if (!string.IsNullOrWhiteSpace(other.Id) && string.Equals(Id, other.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            // Confidence describes the ID, so a certain inventory ID must not become a guess just
+            // because the same ID also arrived from a loose name lookup.
+            if (ConfidenceStrength(other.MatchConfidence) > ConfidenceStrength(MatchConfidence)) MatchConfidence = other.MatchConfidence;
+        }
         if (string.IsNullOrWhiteSpace(UninstallString) && !string.IsNullOrWhiteSpace(other.UninstallString)) UninstallString = other.UninstallString;
         if (string.IsNullOrWhiteSpace(InstallLocation) && !string.IsNullOrWhiteSpace(other.InstallLocation)) InstallLocation = other.InstallLocation;
         if (string.IsNullOrWhiteSpace(StoreSearchName) && !string.IsNullOrWhiteSpace(other.StoreSearchName)) StoreSearchName = other.StoreSearchName;
@@ -107,6 +164,13 @@ public sealed class AppItem : INotifyPropertyChanged
             if (!string.IsNullOrWhiteSpace(other.Name) && other.Name.Length < Name.Length) Name = other.Name;
         }
     }
+
+    private static int ConfidenceStrength(MatchConfidence value) => value switch
+    {
+        MatchConfidence.None => 2,
+        MatchConfidence.Exact => 1,
+        _ => 0
+    };
 
     public static int TypePriority(AppItem item)
     {
