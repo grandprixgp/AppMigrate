@@ -14,8 +14,7 @@ public static class ThemeService
     private const int DwmBorderColor = 34;
     private const int DwmCaptionColor = 35;
     private const int DwmTextColor = 36;
-    private static readonly string SettingsDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeaChest");
+    private static readonly string SettingsDirectory = AppPaths.DataDirectory;
     private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.json");
 
     public static bool IsDark { get; private set; } = true;
