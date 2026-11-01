@@ -275,6 +275,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetField(ref _lastReport, value);
     }
 
+    /// <summary>The failed rows in the current plan, ready for a retry. Empty before a run.</summary>
+    public IReadOnlyList<PlanItem> FailedItems => SelectFailed(PlanItems);
+
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<AppErrorEventArgs>? Error;
 
@@ -496,8 +499,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
+            // Progress<T> captures the UI context here, so the row updates happen on the UI thread.
             var progress = new Progress<InstallProgress>(p =>
             {
+                ApplyInstallProgress(p);
                 ProgressValue = p.Total > 0 ? (double)p.Current / p.Total * 100 : 0;
                 if (!string.IsNullOrWhiteSpace(p.Status))
                 {
@@ -535,12 +540,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         finally
         {
+            // Statuses changed outside NotifyPlanChanged, so the retry list needs its own nudge.
+            OnPropertyChanged(nameof(FailedItems));
             IsBusy = false;
             IsProgressIndeterminate = false;
             _cts?.Dispose();
             _cts = null;
         }
     }
+
+    // The row carries its own plan item, so this needs no lookup and no guessing from the name.
+    internal static void ApplyInstallProgress(InstallProgress progress)
+    {
+        if (progress.Item == null || string.IsNullOrEmpty(progress.Status)) return;
+        progress.Item.Status = progress.Status;
+        progress.Item.StatusDetail = progress.Detail;
+    }
+
+    internal static IReadOnlyList<PlanItem> SelectFailed(IEnumerable<PlanItem> items)
+        => items.Where(item => item.Status == "Failed").ToList();
 
     public void Cancel()
     {
@@ -693,6 +711,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(HasPlan));
         OnPropertyChanged(nameof(InstallActionCount));
+        OnPropertyChanged(nameof(FailedItems));
         OnPropertyChanged(nameof(CanInstall));
         CommandManager.InvalidateRequerySuggested();
     }
