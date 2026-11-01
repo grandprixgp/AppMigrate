@@ -169,6 +169,8 @@ public partial class MainWindow : Window
         MessageBox.Show(this, e.Message, e.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
+    // TODO: a MessageBox is a pretty sad details view. A side panel with the ID, where it was
+    // matched from, and an "open in Store / winget.run" link would be much nicer.
     private void AppsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (AppsGrid.SelectedItem is not AppItem app) return;

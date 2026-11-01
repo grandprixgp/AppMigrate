@@ -558,6 +558,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void ApplySnapshot(ScanSnapshot snapshot)
     {
+        // TODO: rebuilding the whole collection on every progress tick makes the grid jump back
+        // to the top mid-scan. Diff by IdentityKey and only add/update the rows that changed.
         ReplaceApps(snapshot.Apps);
         StatusText = snapshot.Status;
         IsProgressIndeterminate = snapshot.IsIndeterminate;

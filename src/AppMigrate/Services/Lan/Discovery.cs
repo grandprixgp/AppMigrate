@@ -152,6 +152,8 @@ public static class Discovery
         }
     }
 
+    // TODO: IPv4 only for now. An IPv6-only network (rare at home, but it happens) would need a
+    // link-local multicast group as well.
     /// <summary>The limited broadcast, each adapter's directed broadcast, and loopback (for a second copy on the same PC).</summary>
     internal static IEnumerable<IPEndPoint> BroadcastTargets(int port)
     {

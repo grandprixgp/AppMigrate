@@ -132,6 +132,9 @@ public sealed class InstallService
     /// Installs the plan's items one by one. Cancelling stops after the current app and still
     /// returns (and writes) a report covering everything attempted so far.
     /// </summary>
+    // TODO: every machine-scope installer pops its own UAC prompt, which gets old fast with 40
+    // apps. Offer a "restart as admin" button before a big batch.
+    // TODO: per-row status in the plan grid plus a "retry failed" button. The data's already here.
     public async Task<InstallReport> InstallAsync(
         InstallPlan plan,
         InstallOptions options,

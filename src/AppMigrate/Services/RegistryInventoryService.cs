@@ -48,6 +48,9 @@ public sealed class RegistryInventoryService
                 displayName.StartsWith("Update for ", StringComparison.OrdinalIgnoreCase) ||
                 displayName.StartsWith("Security Update for ", StringComparison.OrdinalIgnoreCase) ||
                 displayName.StartsWith("Hotfix for ", StringComparison.OrdinalIgnoreCase)) continue;
+            // TODO: this throws out real apps too - "Dell Command | Update" is something people
+            // actually want back. Probably better to only skip these when there's a parent app
+            // from the same publisher in the list.
             if (Regex.IsMatch(displayName, @"\b(Update|Updater|Helper|Telemetry)\b", RegexOptions.IgnoreCase)) continue;
 
             string uninstallString = key.GetValue("UninstallString") as string ?? "";
