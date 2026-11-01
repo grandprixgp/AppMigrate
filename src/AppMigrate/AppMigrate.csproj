@@ -24,4 +24,8 @@
     <Resource Include="Assets\AppMigrate.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AppMigrate.Tests" />
+  </ItemGroup>
+
 </Project>
