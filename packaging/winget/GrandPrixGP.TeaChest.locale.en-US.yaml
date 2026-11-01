@@ -6,7 +6,8 @@ Publisher: grandprixgp
 PublisherUrl: https://github.com/grandprixgp
 PackageName: TeaChest
 PackageUrl: https://github.com/grandprixgp/TeaChest
-License: TODO
+License: MIT
+LicenseUrl: https://github.com/grandprixgp/TeaChest/blob/main/LICENSE
 ShortDescription: New PC, same apps.
 ManifestType: defaultLocale
 ManifestVersion: 1.9.0

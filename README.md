@@ -219,3 +219,7 @@ Things we'd love to get to. They're also sprinkled through the code as `TODO`s i
 ## Privacy
 
 There's no telemetry, analytics, or account. TeaChest talks to Windows, to WinGet (which talks to its package sources), and, only while you're using Nearby devices, to the other PC on your network. That's it.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
