@@ -1,0 +1,15 @@
+[Bb]in/
+[Oo]bj/
+dist/
+.vs/
+.idea/
+*.user
+*.suo
+*.log
+apps.json
+apps.csv
+apps.md
+install-log-*.txt
+install-report-*.json
+manual-actions-*.txt
+TestResults/
