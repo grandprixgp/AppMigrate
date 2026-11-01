@@ -106,6 +106,8 @@ public sealed class PeerClient
             newlyPaired = true;
         }
 
+        // TODO: v2 idea - ask for settings files too (VS Code, Terminal, Git config), not just
+        // the app list. Would need a per-app "recipe" of paths and an explicit opt-in per item.
         await FrameCodec.WriteAsync(ssl, new PeerMessage { Type = PeerMessageTypes.GetInventory }, token).ConfigureAwait(false);
         PeerMessage inventory = await FrameCodec.ExpectAsync(ssl, PeerMessageTypes.Inventory, token).ConfigureAwait(false);
         if (inventory.Inventory == null) throw new InvalidDataException($"{server.Name} sent an empty inventory.");
