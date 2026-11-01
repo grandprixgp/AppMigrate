@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 namespace TeaChest.Models;
@@ -112,14 +114,45 @@ public sealed class AppRecord
     }
 }
 
-public sealed class PlanItem
+public sealed class PlanItem : INotifyPropertyChanged
 {
+    private string _status = "";
+    private string _statusDetail = "";
+
     public string Action { get; set; } = "";
     public string Name { get; set; } = "";
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";
     public string Detail { get; set; } = "";
     public AppItem App { get; set; } = new();
+
+    /// <summary>Empty until this row is attempted, then Installing or the final result.</summary>
+    public string Status
+    {
+        get => _status;
+        set
+        {
+            if (_status == value) return;
+            _status = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string StatusDetail
+    {
+        get => _statusDetail;
+        set
+        {
+            if (_statusDetail == value) return;
+            _statusDetail = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 public sealed class ScanSnapshot
@@ -137,6 +170,10 @@ public sealed class InstallProgress
     public int Total { get; init; }
     public string AppName { get; init; } = "";
     public string Status { get; init; } = "";
+    public string Detail { get; init; } = "";
     public string? Line { get; init; }
     public bool IsComplete { get; init; }
+
+    /// <summary>The plan row this report belongs to, so the view can update it without a lookup.</summary>
+    public PlanItem? Item { get; init; }
 }
