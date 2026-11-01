@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using TeaChest.Services;
 
 namespace TeaChest.Models;
 
@@ -11,6 +12,7 @@ public sealed class AppItem : INotifyPropertyChanged
     public string Id { get; set; } = "";
     public string Source { get; set; } = "";
     public string InstallType { get; set; } = "manual";
+    public MatchConfidence MatchConfidence { get; set; }
     public string Version { get; set; } = "";
     public string Publisher { get; set; } = "";
     public string Scope { get; set; } = "";
@@ -87,6 +89,7 @@ public sealed class AppItem : INotifyPropertyChanged
         if (string.IsNullOrWhiteSpace(PackageFullName) && !string.IsNullOrWhiteSpace(other.PackageFullName)) PackageFullName = other.PackageFullName;
         if (string.IsNullOrWhiteSpace(Category) && !string.IsNullOrWhiteSpace(other.Category)) Category = other.Category;
         if (string.IsNullOrWhiteSpace(Notes) && !string.IsNullOrWhiteSpace(other.Notes)) Notes = other.Notes;
+        if (MatchConfidence == MatchConfidence.None && other.MatchConfidence != MatchConfidence.None) MatchConfidence = other.MatchConfidence;
         if (string.IsNullOrWhiteSpace(UninstallString) && !string.IsNullOrWhiteSpace(other.UninstallString)) UninstallString = other.UninstallString;
         if (string.IsNullOrWhiteSpace(InstallLocation) && !string.IsNullOrWhiteSpace(other.InstallLocation)) InstallLocation = other.InstallLocation;
         if (string.IsNullOrWhiteSpace(StoreSearchName) && !string.IsNullOrWhiteSpace(other.StoreSearchName)) StoreSearchName = other.StoreSearchName;
