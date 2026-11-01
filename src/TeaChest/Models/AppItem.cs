@@ -103,15 +103,6 @@ public sealed class AppItem : INotifyPropertyChanged
         _ => "Manual"
     };
 
-    public string Initial
-    {
-        get
-        {
-            string name = Name.Trim();
-            return name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
-        }
-    }
-
     public string SearchBlob => string.Join(' ', Name, Id, Category, InstallType, Publisher, Notes);
 
     public string IdentityKey => !string.IsNullOrWhiteSpace(Id) ? Id.ToLowerInvariant() : TextUtil.NormalizeLoose(Name);

@@ -8,8 +8,8 @@ using TeaChest.ViewModels;
 
 namespace TeaChest;
 
-// TODO: v2 - general tighten-up and redesign of the window. This code-behind has grown a click
-// handler per button; most of it should move into commands on the view models.
+// TODO: this code-behind has grown a click handler per button; most of it should move into
+// commands on the view models.
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
