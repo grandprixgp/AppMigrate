@@ -155,4 +155,22 @@ public sealed class InstallStatusTests : IDisposable
 
         Assert.Equal(new[] { failed }, MainViewModel.SelectFailed(new[] { failed, cancelled, untouched }));
     }
+
+    [Fact]
+    public void FailedItemsCannotOutliveThePlan()
+    {
+        var viewModel = new MainViewModel();
+        viewModel.PlanItems.Add(new PlanItem { Status = "Failed" });
+
+        Assert.Single(viewModel.FailedItems);
+
+        var changed = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Loading another manifest is a real path that clears the old plan.
+        Assert.True(viewModel.LoadItems(Array.Empty<AppItem>(), "another PC"));
+
+        Assert.Empty(viewModel.FailedItems);
+        Assert.Contains(nameof(MainViewModel.FailedItems), changed);
+    }
 }
