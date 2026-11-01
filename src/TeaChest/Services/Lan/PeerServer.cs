@@ -29,6 +29,8 @@ public sealed class PeerServer : IAsyncDisposable
     private readonly KnownPeers _known;
     private readonly IInventoryProvider _inventory;
     private readonly Func<PairingRequest, CancellationToken, Task<bool>> _confirmPairing;
+    private readonly PairingThrottle _pairingThrottle = new(() => DateTimeOffset.UtcNow);
+    private int _promptOpen;
     private readonly SemaphoreSlim _sessions = new(MaxSessions, MaxSessions);
     private readonly CancellationTokenSource _cts = new();
     private TcpListener? _listener;
@@ -208,10 +210,27 @@ public sealed class PeerServer : IAsyncDisposable
             return false;
         }
 
+        if (!_pairingThrottle.TryBegin(remote))
+        {
+            await SendErrorAsync(ssl, "Too many pairing attempts. Wait a moment and try again.", token).ConfigureAwait(false);
+            Activity?.Invoke($"Ignored a pairing request from {peer.Name} ({remote}): too many attempts in a row.");
+            return false;
+        }
+
+        if (Interlocked.CompareExchange(ref _promptOpen, 1, 0) != 0)
+        {
+            // Another PC is already waiting on a prompt. This refusal must not count as a decline,
+            // or a genuine peer could land in the cooldown because of someone else's request.
+            await FrameCodec.WriteAsync(ssl, new PeerMessage { Type = PeerMessageTypes.PairResult, Accepted = false }, token).ConfigureAwait(false);
+            Activity?.Invoke($"Another pairing request is already waiting, so {peer.Name} ({remote}) was turned away.");
+            return false;
+        }
+
         string code = Pairing.Code(_identity.Fingerprint, clientFingerprint, clientNonce, serverNonce);
         bool accepted;
-        using (var wait = CancellationTokenSource.CreateLinkedTokenSource(token))
+        try
         {
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(token);
             wait.CancelAfter(PairingTimeout);
             try
             {
@@ -222,6 +241,14 @@ public sealed class PeerServer : IAsyncDisposable
                 accepted = false;
             }
         }
+        finally
+        {
+            Interlocked.Exchange(ref _promptOpen, 0);
+        }
+
+        // Record the decline before telling the peer. A caller that already hung up makes the
+        // write below throw, and the cooldown still has to stick.
+        if (!accepted) _pairingThrottle.Declined(remote);
 
         await FrameCodec.WriteAsync(ssl, new PeerMessage { Type = PeerMessageTypes.PairResult, Accepted = accepted }, token).ConfigureAwait(false);
         if (!accepted)
@@ -230,6 +257,7 @@ public sealed class PeerServer : IAsyncDisposable
             return false;
         }
 
+        _pairingThrottle.Accepted(remote);
         _known.Add(clientFingerprint, peer);
         Activity?.Invoke($"Paired with {peer.Name}.");
         return true;
