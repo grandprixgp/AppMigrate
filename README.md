@@ -12,9 +12,9 @@ If both PCs are on the same network, you don't even need to carry a file between
 
 ## What's new in 1.3
 
-- **AppMigrate is now TeaChest.** New name, new icon, same app. Pack up the old PC, put the kettle on while the new one unpacks.
-- **Your setup comes with you.** Pairings, this PC's identity, and your theme move over from the old AppMigrate folder the first time you open TeaChest.
-- **TeaChest and AppMigrate 1.2 still talk to each other** over Nearby devices, so you don't have to upgrade the old PC first.
+- **A new name and a new icon.** Same app. Pack up the old PC, put the kettle on while the new one unpacks.
+- **Your setup comes with you.** Upgrading from 1.2? Pairings, this PC's identity, and your theme move over the first time you open 1.3.
+- **Version 1.3 still talks to 1.2** over Nearby devices, so you don't have to upgrade the old PC first.
 - **Manifests are now called `teachest.json`.** Your existing `apps.json` files still work.
 
 ## What's new in 1.2
@@ -119,7 +119,7 @@ To undo everything: delete `%LOCALAPPDATA%\TeaChest` (that forgets the pairings)
 netsh advfirewall firewall delete rule name="TeaChest Nearby"
 ```
 
-Moved over from AppMigrate? Its old `AppMigrate Nearby` rule is removed the first time you share with TeaChest.
+Upgrading from 1.2? The old version's firewall rule is removed automatically the first time you share.
 
 ## What it won't do (yet)
 
