@@ -76,8 +76,9 @@ public sealed class ScanService
         {
             int done = 0;
             Publish(items, gate, progress, $"Resolving {resolveTargets.Count} package IDs in parallel...", true, 0, false);
-            // TODO: name lookups are thrown away after every scan. Caching them on disk (keyed by
-            // name + publisher) would make a rescan almost instant.
+            // TODO: name lookups are thrown away after every scan. Cache them on disk (keyed by
+            // name + publisher) and show the cached answers straight away, but still run the real
+            // lookups in the background and patch the results back in, so the cache never goes stale.
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 8,
