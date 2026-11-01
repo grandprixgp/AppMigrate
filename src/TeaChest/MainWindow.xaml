@@ -373,6 +373,13 @@
                                     Margin="0,0,8,0"
                                     IsEnabled="{Binding CanEdit}"
                                     Click="PreviewButton_Click" />
+                            <Button x:Name="RetryButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Content="{Binding RetryLabel}"
+                                    Margin="0,0,8,0"
+                                    IsEnabled="{Binding CanRetry}"
+                                    Visibility="{Binding CanRetry, Converter={StaticResource BoolToVis}}"
+                                    Click="RetryButton_Click" />
                             <Button x:Name="InstallButton"
                                     Style="{StaticResource PrimaryButton}"
                                     Content="Install selected"
@@ -465,6 +472,40 @@
                                                             </TextBlock.Style>
                                                         </TextBlock>
                                                     </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Status" Width="130" SortMemberPath="Status">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Status}"
+                                                               FontSize="11.5"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding StatusDetail}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Installing">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Info}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Installed">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Success}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="RebootRequired">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Warning}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource Danger}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
