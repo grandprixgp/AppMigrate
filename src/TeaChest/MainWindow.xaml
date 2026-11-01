@@ -28,7 +28,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="236" />
+            <ColumnDefinition Width="216" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -37,24 +37,22 @@
                 Background="{DynamicResource SidebarBackground}"
                 BorderBrush="{DynamicResource Border}"
                 BorderThickness="0,0,1,0">
-            <Grid Margin="18,24,18,18">
+            <Grid Margin="14,22,14,14">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
-                    <Image Width="42" Height="42" Source="Assets/TeaChest.png" RenderOptions.BitmapScalingMode="HighQuality" />
-                    <StackPanel Margin="12,1,0,0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Margin="6,0,0,0">
+                    <Image Width="36" Height="36" Source="Assets/TeaChest.png" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="TeaChest" Style="{StaticResource H2}" />
-                        <TextBlock Text="New PC, same apps" Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                        <TextBlock Text="New PC, same apps" Style="{StaticResource RowSubtext}" />
                     </StackPanel>
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" Margin="0,34,0,0">
-                    <TextBlock Text="WORKSPACE" Style="{StaticResource Caption}" Margin="12,0,0,9" />
+                <StackPanel Grid.Row="1" Margin="0,28,0,0">
                     <RadioButton x:Name="CollectNav"
                                  Style="{StaticResource NavRadio}"
                                  Tag="&#xE71D;"
@@ -73,32 +71,24 @@
                                  Checked="NearbyNav_Checked" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="2" VerticalAlignment="Bottom" Margin="0,0,0,18">
-                    <Border Background="{DynamicResource SurfaceAlt}"
-                            BorderBrush="{DynamicResource Border}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="12,10">
-                        <StackPanel>
-                            <TextBlock Text="LIVE INVENTORY" Style="{StaticResource Caption}" />
-                            <TextBlock Text="Registry · AppX · WinGet" Style="{StaticResource Subtle}" Margin="0,5,0,0" />
-                            <TextBlock Text="Scanned in parallel" Style="{StaticResource Subtle}" Margin="0,2,0,0" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Row="3">
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <Button x:Name="ThemeButton"
                             Style="{StaticResource GhostButton}"
                             Content="Switch theme"
                             HorizontalAlignment="Left"
-                            Padding="10,6"
+                            FontSize="13"
+                            Padding="8,4"
                             Click="ThemeButton_Click" />
                     <TextBlock x:Name="VersionText"
-                               Style="{StaticResource Caption}"
-                               Margin="10,8,0,0"
-                               Opacity="0.7" />
-                </StackPanel>
+                               Grid.Column="1"
+                               Style="{StaticResource RowSubtext}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                </Grid>
             </Grid>
         </Border>
 
@@ -150,80 +140,82 @@
                         </StackPanel>
                     </Grid>
 
-                    <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,16">
-                        <Border Style="{StaticResource Card}" Margin="0,0,10,0" Padding="16,13">
-                            <StackPanel>
-                                <TextBlock Text="Detected" Style="{StaticResource Caption}" />
-                                <TextBlock Text="{Binding TotalCount}" Style="{StaticResource StatValue}" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Card}" Margin="0,0,10,0" Padding="16,13">
-                            <StackPanel>
-                                <TextBlock Text="Selected" Style="{StaticResource Caption}" />
-                                <TextBlock Text="{Binding SelectedCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource Accent}" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Card}" Margin="0,0,10,0" Padding="16,13">
-                            <StackPanel>
-                                <TextBlock Text="WinGet" Style="{StaticResource Caption}" />
-                                <TextBlock Text="{Binding WingetCount}" Style="{StaticResource StatValue}" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Card}" Padding="16,13">
-                            <StackPanel>
-                                <TextBlock Text="Manual" Style="{StaticResource Caption}" />
-                                <TextBlock Text="{Binding ManualCount}" Style="{StaticResource StatValue}" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
+                    <!-- The tally: one quiet line, so the list gets the height the stat cards used to take. -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding TotalCount}" Style="{StaticResource StatValue}" />
+                            <TextBlock Text="detected" Style="{StaticResource Subtle}" VerticalAlignment="Bottom" Margin="6,0,0,4" />
+                        </StackPanel>
+                        <Rectangle Width="1" Margin="18,5" Fill="{DynamicResource BorderStrong}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding SelectedCount}" Style="{StaticResource StatValue}" Foreground="{DynamicResource Accent}" />
+                            <TextBlock Text="selected" Style="{StaticResource Subtle}" VerticalAlignment="Bottom" Margin="6,0,0,4" />
+                        </StackPanel>
+                        <Rectangle Width="1" Margin="18,5" Fill="{DynamicResource BorderStrong}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding WingetCount}" Style="{StaticResource StatValue}" />
+                            <TextBlock Text="WinGet" Style="{StaticResource Subtle}" VerticalAlignment="Bottom" Margin="6,0,0,4" />
+                        </StackPanel>
+                        <Rectangle Width="1" Margin="18,5" Fill="{DynamicResource BorderStrong}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding ManualCount}" Style="{StaticResource StatValue}" />
+                            <TextBlock Text="manual" Style="{StaticResource Subtle}" VerticalAlignment="Bottom" Margin="6,0,0,4" />
+                        </StackPanel>
+                    </StackPanel>
 
-                    <Grid Grid.Row="2" Margin="0,0,0,10">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="320" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     Tag="Search apps, IDs, categories..." />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Style="{StaticResource GhostButton}"
-                                        Content="Select visible"
-                                        Command="{Binding SelectVisibleCommand}"
-                                        Padding="10,6" />
-                                <Button Style="{StaticResource GhostButton}"
-                                        Content="Clear visible"
-                                        Command="{Binding ClearVisibleCommand}"
-                                        Padding="10,6" />
-                                <Button Style="{StaticResource GhostButton}"
-                                        Content="Defaults"
-                                        Command="{Binding RestoreDefaultsCommand}"
-                                        Padding="10,6" />
-                            </StackPanel>
-                        </Grid>
-                        <ListBox Grid.Row="1"
-                                 Style="{StaticResource FilterListBox}"
-                                 ItemsSource="{Binding Filters}"
-                                 SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
-                                 ItemContainerStyle="{StaticResource FilterItem}"
-                                 DisplayMemberPath="Label"
-                                 Margin="0,10,0,0"
-                                 VerticalAlignment="Center">
-                            <ListBox.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal" />
-                                </ItemsPanelTemplate>
-                            </ListBox.ItemsPanel>
-                        </ListBox>
+                    <Grid Grid.Row="2" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="320" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="34,7,12,7"
+                                 Tag="Search apps, IDs, categories..." />
+                        <TextBlock Text="&#xE721;"
+                                   FontFamily="{StaticResource IconFont}"
+                                   FontSize="14"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Center"
+                                   Margin="12,0,0,0"
+                                   IsHitTestVisible="False" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource GhostButton}"
+                                    Content="Select visible"
+                                    Command="{Binding SelectVisibleCommand}"
+                                    Padding="10,6" />
+                            <Button Style="{StaticResource GhostButton}"
+                                    Content="Clear visible"
+                                    Command="{Binding ClearVisibleCommand}"
+                                    Padding="10,6" />
+                            <Button Style="{StaticResource GhostButton}"
+                                    Content="Defaults"
+                                    Command="{Binding RestoreDefaultsCommand}"
+                                    Padding="10,6" />
+                        </StackPanel>
                     </Grid>
 
                     <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0" ClipToBounds="True">
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <ListBox Style="{StaticResource FilterListBox}"
+                                     ItemsSource="{Binding Filters}"
+                                     SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
+                                     ItemContainerStyle="{StaticResource FilterItem}"
+                                     DisplayMemberPath="Label"
+                                     Margin="9,2,16,0">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                            </ListBox>
                             <DataGrid x:Name="AppsGrid"
+                                      Grid.Row="1"
                                       ItemsSource="{Binding AppsView}"
                                       IsEnabled="True"
                                       SelectionMode="Single"
@@ -239,94 +231,66 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="App" Width="250" SortMemberPath="Name">
+                                    <DataGridTemplateColumn Header="App" Width="5*" MinWidth="200" SortMemberPath="Name">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Border Width="30" Height="30" CornerRadius="8"
-                                                            Background="{DynamicResource AccentSoft}"
-                                                            VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Initial}"
-                                                                   HorizontalAlignment="Center"
-                                                                   VerticalAlignment="Center"
-                                                                   Foreground="{DynamicResource Accent}"
-                                                                   FontWeight="SemiBold"
-                                                                   FontSize="14" />
-                                                    </Border>
-                                                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding Name}"
-                                                                   FontWeight="SemiBold"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   ToolTip="{Binding Name}" />
-                                                        <TextBlock Text="{Binding Publisher}"
-                                                                   Style="{StaticResource Caption}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   Margin="0,1,0,0" />
-                                                    </StackPanel>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Name}" />
+                                                    <TextBlock Text="{Binding Publisher}"
+                                                               Style="{StaticResource RowSubtext}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="Type" Width="80" SortMemberPath="TypeLabel">
+                                    <DataGridTemplateColumn Header="Type" Width="92" SortMemberPath="TypeLabel">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Border CornerRadius="6" Padding="8,3" HorizontalAlignment="Left">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="{DynamicResource SurfaceAlt}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding TypeLabel}" Value="WinGet">
-                                                                    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding TypeLabel}" Value="Manual">
-                                                                    <Setter Property="Background" Value="{DynamicResource WarningSoft}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock Text="{Binding TypeLabel}" FontSize="11.5" FontWeight="SemiBold">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                                                        <Ellipse.Style>
+                                                            <Style TargetType="Ellipse">
+                                                                <Setter Property="Fill" Value="{DynamicResource TextMuted}" />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding TypeLabel}" Value="WinGet">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+                                                                        <Setter Property="Fill" Value="{DynamicResource Accent}" />
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding TypeLabel}" Value="Manual">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Warning}" />
+                                                                        <Setter Property="Fill" Value="{DynamicResource Warning}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </Border>
+                                                        </Ellipse.Style>
+                                                    </Ellipse>
+                                                    <TextBlock Text="{Binding TypeLabel}"
+                                                               Foreground="{DynamicResource TextSecondary}"
+                                                               Margin="7,0,0,0"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="125" IsReadOnly="True" SortMemberPath="Category" />
-                                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="116" IsReadOnly="True" SortMemberPath="Version" ElementStyle="{StaticResource GridCellText}" />
-                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="290" IsReadOnly="True" SortMemberPath="Id" ElementStyle="{StaticResource GridCellText}" />
-                                    <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" IsReadOnly="True" SortMemberPath="Notes" ElementStyle="{StaticResource GridCellText}" />
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="118" IsReadOnly="True" SortMemberPath="Category" ElementStyle="{StaticResource GridCellText}" />
+                                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100" IsReadOnly="True" SortMemberPath="Version" ElementStyle="{StaticResource GridCellText}" />
+                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="4*" MinWidth="170" IsReadOnly="True" SortMemberPath="Id" ElementStyle="{StaticResource GridCellMono}" />
+                                    <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="4*" MinWidth="90" IsReadOnly="True" SortMemberPath="Notes" ElementStyle="{StaticResource GridCellText}" />
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            <StackPanel Grid.Row="1"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Visibility="{Binding HasApps, Converter={StaticResource InverseBoolToVis}}">
-                                <Border Width="64" Height="64" CornerRadius="18"
-                                        Background="{DynamicResource AccentSoft}"
-                                        HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE71D;"
-                                               FontFamily="Segoe Fluent Icons"
-                                               FontSize="26"
-                                               Foreground="{DynamicResource Accent}"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="No apps loaded"
+                                <Image Width="72" Height="72"
+                                       Source="Assets/TeaChest.png"
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Center" />
+                                <TextBlock Text="Nothing in the chest yet"
                                            Style="{StaticResource H2}"
                                            HorizontalAlignment="Center"
                                            Margin="0,14,0,0" />
-                                <TextBlock Text="Scan this PC to build a live inventory from Registry, AppX, and WinGet."
+                                <TextBlock Text="Scan this PC to see what's installed, or open a manifest you saved earlier."
                                            Style="{StaticResource Subtle}"
                                            HorizontalAlignment="Center"
                                            Margin="0,6,0,0" />
@@ -395,7 +359,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,24,0">
-                                <TextBlock Text="ACTIVE MANIFEST" Style="{StaticResource Caption}" />
+                                <TextBlock Text="Active manifest" Style="{StaticResource Caption}" />
                                 <TextBlock Text="{Binding ManifestLabel}"
                                            FontSize="14"
                                            TextTrimming="CharacterEllipsis"
@@ -439,79 +403,83 @@
                             <Grid>
                                 <DataGrid x:Name="PlanGrid" ItemsSource="{Binding PlanItems}" MouseDoubleClick="PlanGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Action" Width="86" SortMemberPath="Action">
+                                        <DataGridTemplateColumn Header="Action" Width="96" SortMemberPath="Action">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <Border CornerRadius="6" Padding="8,3" HorizontalAlignment="Left">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Setter Property="Background" Value="{DynamicResource SurfaceAlt}" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Action}" Value="Install">
-                                                                        <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Action}" Value="Manual">
-                                                                        <Setter Property="Background" Value="{DynamicResource WarningSoft}" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                        <TextBlock Text="{Binding Action}" FontSize="11.5" FontWeight="SemiBold">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="{DynamicResource TextMuted}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Action}" Value="Install">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Accent}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Action}" Value="Manual">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Warning}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Text="{Binding Action}"
+                                                                   Foreground="{DynamicResource TextSecondary}"
+                                                                   Margin="7,0,0,0"
+                                                                   VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Status" Width="132" SortMemberPath="Status">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" ToolTip="{Binding StatusDetail}">
+                                                        <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="{DynamicResource TextMuted}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Installing">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Info}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Installed">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Success}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="RebootRequired">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Warning}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                            <Setter Property="Fill" Value="{DynamicResource Danger}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Text="{Binding StatusLabel}"
+                                                                   Margin="7,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
                                                                     <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Action}" Value="Install">
-                                                                            <Setter Property="Foreground" Value="{DynamicResource Accent}" />
-                                                                        </DataTrigger>
-                                                                        <DataTrigger Binding="{Binding Action}" Value="Manual">
-                                                                            <Setter Property="Foreground" Value="{DynamicResource Warning}" />
+                                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Danger}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </TextBlock.Style>
                                                         </TextBlock>
-                                                    </Border>
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Status" Width="130" SortMemberPath="Status">
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding StatusLabel}"
-                                                               FontSize="11.5"
-                                                               FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding StatusDetail}">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="Installing">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Info}" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="Installed">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Success}" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="RebootRequired">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Warning}" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="Failed">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Danger}" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="App" Binding="{Binding Name}" Width="300" IsReadOnly="True" />
-                                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="90" IsReadOnly="True" />
-                                        <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="*" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                        <DataGridTextColumn Header="App" Binding="{Binding Name}" Width="3*" MinWidth="150" IsReadOnly="True" ElementStyle="{StaticResource GridCellPrimary}" />
+                                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="78" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                        <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="4*" MinWidth="110" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
 
@@ -542,7 +510,7 @@
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
                                 <Grid Margin="14,10,14,4">
-                                    <TextBlock Text="ACTIVITY" Style="{StaticResource Caption}" />
+                                    <TextBlock Text="Activity" Style="{StaticResource Caption}" />
                                     <TextBlock Text="Live WinGet output" Style="{StaticResource Caption}" HorizontalAlignment="Right" Opacity="0.7" />
                                 </Grid>
                                 <TextBox Grid.Row="1"
@@ -596,14 +564,14 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,24,0">
-                                <TextBlock Text="PAIRING REQUEST" Style="{StaticResource Caption}" />
+                                <TextBlock Text="Pairing request" Style="{StaticResource Caption}" />
                                 <TextBlock Text="{Binding PairingRequestText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>
                             <TextBlock Grid.Column="1"
                                        Text="{Binding PairingRequestCode}"
                                        FontSize="30"
                                        FontWeight="SemiBold"
-                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontFamily="{StaticResource MonoFont}"
                                        Foreground="{DynamicResource Accent}"
                                        VerticalAlignment="Center"
                                        Margin="0,0,24,0" />
@@ -661,13 +629,14 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="ON THIS NETWORK" Style="{StaticResource Caption}" />
+                                <TextBlock Text="On this network" Style="{StaticResource Caption}" />
 
                                 <Grid Grid.Row="1" Margin="0,10,0,10">
                                     <ListBox x:Name="DevicesList"
                                              ItemsSource="{Binding Devices}"
                                              Background="Transparent"
                                              BorderThickness="0"
+                                             ItemContainerStyle="{StaticResource DeviceItem}"
                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                              MouseDoubleClick="DevicesList_MouseDoubleClick">
                                         <ListBox.ItemTemplate>
@@ -678,16 +647,16 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoft}">
+                                                    <Border Width="32" Height="32" CornerRadius="6" Background="{DynamicResource AccentSoft}">
                                                         <TextBlock Text="&#xE7F4;"
-                                                                   FontFamily="Segoe Fluent Icons"
+                                                                   FontFamily="{StaticResource IconFont}"
                                                                    Foreground="{DynamicResource Accent}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center" />
                                                     </Border>
                                                     <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" />
+                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource RowSubtext}" />
                                                     </StackPanel>
                                                     <Border Grid.Column="2"
                                                             CornerRadius="6"
@@ -725,7 +694,7 @@
                                             Content="Connect and compare"
                                             HorizontalAlignment="Stretch"
                                             Click="ConnectButton_Click" />
-                                    <TextBlock Text="OR CONNECT BY ADDRESS" Style="{StaticResource Caption}" Margin="0,16,0,6" />
+                                    <TextBlock Text="Or connect by address" Style="{StaticResource Caption}" Margin="0,16,0,6" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -751,7 +720,7 @@
                                     <TextBlock Text="{Binding ClientPairingCode}"
                                                FontSize="30"
                                                FontWeight="SemiBold"
-                                               FontFamily="Cascadia Mono, Consolas"
+                                               FontFamily="{StaticResource MonoFont}"
                                                Foreground="{DynamicResource Accent}"
                                                HorizontalAlignment="Center"
                                                Margin="0,8,0,0"
@@ -781,7 +750,7 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="COMPARED WITH" Style="{StaticResource Caption}" />
+                                            <TextBlock Text="Compared with" Style="{StaticResource Caption}" />
                                             <TextBlock Text="{Binding DiffSource}" Style="{StaticResource H2}" Margin="0,2,0,0" />
                                             <TextBlock Text="{Binding DiffSummary}" Style="{StaticResource Subtle}" Margin="0,2,0,0" />
                                         </StackPanel>
@@ -816,22 +785,22 @@
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTextColumn Header="App" Binding="{Binding Name}" Width="260" IsReadOnly="True" />
-                                            <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="80" IsReadOnly="True" />
-                                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="110" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
-                                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="220" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
-                                            <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                            <DataGridTextColumn Header="App" Binding="{Binding Name}" Width="2*" MinWidth="116" IsReadOnly="True" ElementStyle="{StaticResource GridCellPrimary}" />
+                                            <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="78" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="72" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="2*" MinWidth="110" IsReadOnly="True" ElementStyle="{StaticResource GridCellMono}" />
+                                            <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" MinWidth="50" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                 </Grid>
 
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                             Visibility="{Binding HasDiff, Converter={StaticResource InverseBoolToVis}}">
-                                    <Border Width="64" Height="64" CornerRadius="18"
+                                    <Border Width="64" Height="64" CornerRadius="12"
                                             Background="{DynamicResource AccentSoft}"
                                             HorizontalAlignment="Center">
                                         <TextBlock Text="&#xE701;"
-                                                   FontFamily="Segoe Fluent Icons"
+                                                   FontFamily="{StaticResource IconFont}"
                                                    FontSize="26"
                                                    Foreground="{DynamicResource Accent}"
                                                    HorizontalAlignment="Center"
