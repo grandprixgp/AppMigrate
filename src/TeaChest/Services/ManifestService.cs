@@ -16,6 +16,13 @@ public sealed class ManifestService
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
+    public const string DefaultFileName = "teachest.json";
+    private const string LegacyFileName = "apps.json";
+
+    /// <summary>The manifest to pick up automatically from a folder, if there is one. Older exports are called apps.json.</summary>
+    public static string? FindDefault(string directory)
+        => new[] { DefaultFileName, LegacyFileName }.Select(name => Path.Combine(directory, name)).FirstOrDefault(File.Exists);
+
     public async Task<ManifestDocument> LoadAsync(string path, CancellationToken cancellationToken = default)
     {
         await using FileStream stream = File.OpenRead(path);
@@ -44,7 +51,7 @@ public sealed class ManifestService
         };
     }
 
-    // TODO: also write a configuration.winget (WinGet Configuration / DSC YAML) next to apps.json.
+    // TODO: also write a configuration.winget (WinGet Configuration / DSC YAML) next to the manifest.
     // Then `winget configure apps.winget` or Dev Home could rebuild the PC without TeaChest at
     // all, which feels like the right kind of "no lock-in".
     public async Task SaveAsync(string path, IEnumerable<AppItem> apps, CancellationToken cancellationToken = default)

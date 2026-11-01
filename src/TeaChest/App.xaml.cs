@@ -18,8 +18,8 @@ public partial class App : Application
             return;
         }
 
-        // TODO: a proper headless mode right here - `TeaChest.exe scan --out apps.json` and
-        // `TeaChest.exe install apps.json --yes` - so the cli/ PowerShell scripts can retire and
+        // TODO: a proper headless mode right here - `TeaChest.exe scan --out teachest.json` and
+        // `TeaChest.exe install teachest.json --yes` - so the cli/ PowerShell scripts can retire and
         // the same exe works in unattended setups (autounattend, Intune, a USB stick).
         AppPaths.MoveLegacyData();
         base.OnStartup(e);

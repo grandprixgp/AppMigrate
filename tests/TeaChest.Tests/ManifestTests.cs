@@ -1,3 +1,4 @@
+using System.IO;
 using TeaChest.Models;
 using TeaChest.Services;
 
@@ -139,5 +140,32 @@ public class ManifestSanitizerTests
         Assert.Empty(ManifestSanitizer.Sanitize(doc, ManifestTrust.Network));
         Assert.Equal("winget", doc.Apps[0].InstallType);
         Assert.Equal("msstore", doc.Apps[1].InstallType);
+    }
+}
+
+public sealed class DefaultManifestTests : IDisposable
+{
+    private readonly string _directory = Directory.CreateTempSubdirectory("teachest-tests-").FullName;
+
+    public void Dispose() => Directory.Delete(_directory, recursive: true);
+
+    private string Touch(string name)
+    {
+        string path = Path.Combine(_directory, name);
+        File.WriteAllText(path, "{}");
+        return path;
+    }
+
+    [Fact]
+    public void FindsNothingInAnEmptyFolder() => Assert.Null(ManifestService.FindDefault(_directory));
+
+    [Fact]
+    public void StillFindsAnOldAppsJson() => Assert.Equal(Touch("apps.json"), ManifestService.FindDefault(_directory));
+
+    [Fact]
+    public void PrefersTeachestJson()
+    {
+        Touch("apps.json");
+        Assert.Equal(Touch("teachest.json"), ManifestService.FindDefault(_directory));
     }
 }

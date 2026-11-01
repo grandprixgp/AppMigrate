@@ -11,7 +11,8 @@
     at the end with links/notes so nothing is silently lost.
 
 .PARAMETER Manifest
-    apps.json (or apps.csv) created by Export-Apps.ps1.
+    teachest.json (or teachest.csv) created by Export-Apps.ps1. Older apps.json and apps.csv
+    files are still picked up when no -Manifest is given.
 
 .PARAMETER Plan
     Show what would happen without installing anything.
@@ -97,11 +98,11 @@ try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::
 
 if (-not $Manifest) {
     $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-    $Manifest = Join-Path $scriptDir 'apps.json'
-    if (-not (Test-Path -LiteralPath $Manifest)) {
-        $csv = [IO.Path]::ChangeExtension($Manifest, '.csv')
-        if (Test-Path -LiteralPath $csv) { $Manifest = $csv }
-    }
+    $Manifest = 'teachest.json', 'apps.json', 'teachest.csv', 'apps.csv' |
+        ForEach-Object { Join-Path $scriptDir $_ } |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if (-not $Manifest) { $Manifest = Join-Path $scriptDir 'teachest.json' }
 }
 $Manifest = [IO.Path]::GetFullPath($Manifest)
 $manifestDir = Split-Path -Parent $Manifest
@@ -554,7 +555,7 @@ function Install-DownloadApp {
         else { $installerType = 'exe' }
     }
 
-    $tempFile = Join-Path ([IO.Path]::GetTempPath()) ('app-migrate-' + [guid]::NewGuid().ToString('N') + $extension)
+    $tempFile = Join-Path ([IO.Path]::GetTempPath()) ('teachest-' + [guid]::NewGuid().ToString('N') + $extension)
     Add-Log ("DOWNLOAD: {0}" -f $App.downloadUrl)
     try {
         $oldProgress = $ProgressPreference
@@ -615,7 +616,7 @@ function Install-DownloadApp {
 # ---------------------------------------------------------------------------
 
 Write-Host ''
-Write-Host '  APP MIGRATION - INSTALL' -ForegroundColor Cyan
+Write-Host '  TEACHEST - INSTALL' -ForegroundColor Cyan
 
 try {
     $allApps = @(Read-AppManifest -Path $Manifest)
@@ -947,7 +948,7 @@ if (-not $NoLog) {
     catch { Write-Warn "Could not write the install report: $($_.Exception.Message)" }
 
     $manualLines = New-Object System.Collections.Generic.List[string]
-    $manualLines.Add('Manual actions from App Migration')
+    $manualLines.Add('Manual actions from TeaChest')
     $manualLines.Add(("Manifest: {0}" -f $Manifest))
     $manualLines.Add(("Generated: {0}" -f (Get-Date).ToString('yyyy-MM-dd HH:mm')))
     $manualLines.Add('')
