@@ -99,6 +99,11 @@
                                  Tag="&#xE896;"
                                  Content="Install apps"
                                  Checked="InstallNav_Checked" />
+                    <RadioButton x:Name="NearbyNav"
+                                 Style="{StaticResource NavRadio}"
+                                 Tag="&#xE701;"
+                                 Content="Nearby devices"
+                                 Checked="NearbyNav_Checked" />
                 </StackPanel>
 
                 <StackPanel Grid.Row="2" VerticalAlignment="Bottom" Margin="0,0,0,18">
@@ -538,6 +543,279 @@
                                          Text="{Binding LogText, Mode=OneWay}"
                                          Style="{StaticResource LogTextBox}"
                                          TextChanged="LogBox_TextChanged" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <Grid x:Name="NearbyView" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Nearby devices" Style="{StaticResource H1}" />
+                            <TextBlock Text="Pull the app list straight from your old PC over the local network. No manifest file to copy."
+                                       Style="{StaticResource Subtle}"
+                                       Margin="0,5,0,0" />
+                        </StackPanel>
+                        <Button x:Name="ShareButton"
+                                Grid.Column="1"
+                                Style="{StaticResource PrimaryButton}"
+                                Content="{Binding ShareButtonText}"
+                                VerticalAlignment="Center"
+                                Click="ShareButton_Click" />
+                    </Grid>
+
+                    <!-- Incoming pairing request (shown on the sharing PC) -->
+                    <Border Grid.Row="1"
+                            Style="{StaticResource Card}"
+                            BorderBrush="{DynamicResource Accent}"
+                            Margin="0,0,0,14"
+                            Padding="18,14"
+                            Visibility="{Binding HasPairingRequest, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,24,0">
+                                <TextBlock Text="PAIRING REQUEST" Style="{StaticResource Caption}" />
+                                <TextBlock Text="{Binding PairingRequestText}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding PairingRequestCode}"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       Foreground="{DynamicResource Accent}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,24,0" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Reject" Margin="0,0,8,0" Click="RejectPairing_Click" />
+                                <Button Style="{StaticResource PrimaryButton}" Content="Codes match, confirm" Click="ConfirmPairing_Click" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Style="{StaticResource SoftCard}"
+                            Margin="0,0,0,14"
+                            Padding="14,10"
+                            Visibility="{Binding HasShareStatus, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding ShareStatus}" Style="{StaticResource Subtle}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="340" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Devices -->
+                        <Border Style="{StaticResource Card}" Padding="16,14">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="ON THIS NETWORK" Style="{StaticResource Caption}" />
+
+                                <Grid Grid.Row="1" Margin="0,10,0,10">
+                                    <ListBox x:Name="DevicesList"
+                                             ItemsSource="{Binding Devices}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             MouseDoubleClick="DevicesList_MouseDoubleClick">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="2,6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoft}">
+                                                        <TextBlock Text="&#xE7F4;"
+                                                                   FontFamily="Segoe Fluent Icons"
+                                                                   Foreground="{DynamicResource Accent}"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2"
+                                                            CornerRadius="6"
+                                                            Padding="7,2"
+                                                            VerticalAlignment="Center"
+                                                            Background="{DynamicResource AccentSoft}"
+                                                            Visibility="{Binding IsKnown, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="Paired" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" />
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <TextBlock Text="Looking for PCs with sharing turned on. On the old PC, open Nearby devices and click Share this PC."
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Margin="10,0"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Subtle}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Devices.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+
+                                <StackPanel Grid.Row="2">
+                                    <Button Style="{StaticResource PrimaryButton}"
+                                            Content="Connect and compare"
+                                            HorizontalAlignment="Stretch"
+                                            Click="ConnectButton_Click" />
+                                    <TextBlock Text="OR CONNECT BY ADDRESS" Style="{StaticResource Caption}" Margin="0,16,0,6" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding ManualAddress, UpdateSourceTrigger=PropertyChanged}"
+                                                 VerticalContentAlignment="Center"
+                                                 ToolTip="The address shown on the sharing PC, e.g. 192.168.1.20" />
+                                        <Button Grid.Column="1"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Content="Connect"
+                                                Margin="8,0,0,0"
+                                                Click="ConnectManualButton_Click" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding LocalAddresses, StringFormat=This PC: {0}}"
+                                               Style="{StaticResource Caption}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3" Margin="0,14,0,0">
+                                    <TextBlock Text="{Binding ConnectStatus}" Style="{StaticResource Subtle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding ClientPairingCode}"
+                                               FontSize="30"
+                                               FontWeight="SemiBold"
+                                               FontFamily="Cascadia Mono, Consolas"
+                                               Foreground="{DynamicResource Accent}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,8,0,0"
+                                               Visibility="{Binding HasClientPairingCode, Converter={StaticResource BoolToVis}}" />
+                                    <Button Style="{StaticResource GhostButton}"
+                                            Content="Cancel"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,6,0,0"
+                                            Click="CancelConnect_Click"
+                                            Visibility="{Binding IsConnecting, Converter={StaticResource BoolToVis}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Comparison -->
+                        <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0" ClipToBounds="True">
+                            <Grid>
+                                <Grid Visibility="{Binding HasDiff, Converter={StaticResource BoolToVis}}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <Grid Margin="16,14,16,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="COMPARED WITH" Style="{StaticResource Caption}" />
+                                            <TextBlock Text="{Binding DiffSource}" Style="{StaticResource H2}" Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding DiffSummary}" Style="{StaticResource Subtle}" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Content="Install missing apps..."
+                                                VerticalAlignment="Center"
+                                                IsEnabled="{Binding HasMissing}"
+                                                Click="InstallMissing_Click" />
+                                    </Grid>
+                                    <ListBox Grid.Row="1"
+                                             Style="{StaticResource FilterListBox}"
+                                             ItemsSource="{Binding Buckets}"
+                                             SelectedItem="{Binding SelectedBucket, Mode=TwoWay}"
+                                             ItemContainerStyle="{StaticResource FilterItem}"
+                                             DisplayMemberPath="Label"
+                                             Margin="16,12,16,10">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                    </ListBox>
+                                    <DataGrid Grid.Row="2" ItemsSource="{Binding SelectedBucket.Items}" SelectionMode="Single">
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Width="46" CanUserSort="False">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="App" Binding="{Binding Name}" Width="260" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Type" Binding="{Binding TypeLabel}" Width="80" IsReadOnly="True" />
+                                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="110" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="220" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                            <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" IsReadOnly="True" ElementStyle="{StaticResource GridCellText}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Visibility="{Binding HasDiff, Converter={StaticResource InverseBoolToVis}}">
+                                    <Border Width="64" Height="64" CornerRadius="18"
+                                            Background="{DynamicResource AccentSoft}"
+                                            HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE701;"
+                                                   FontFamily="Segoe Fluent Icons"
+                                                   FontSize="26"
+                                                   Foreground="{DynamicResource Accent}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Nothing compared yet"
+                                               Style="{StaticResource H2}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,14,0,0" />
+                                    <TextBlock Text="Pick a device on the left to see which of its apps this PC is missing."
+                                               Style="{StaticResource Subtle}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </Grid>
