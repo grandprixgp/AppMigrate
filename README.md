@@ -199,10 +199,12 @@ Things we'd love to get to. They're also sprinkled through the code as `TODO`s i
 
 - **More sources:** Scoop, Chocolatey, VS Code extensions, global npm/pipx/dotnet tools, WSL distros.
 - **Settings over Nearby:** carry app settings (VS Code, Windows Terminal, Git config) along with the app list, opt-in per app.
+- **A smart file explorer over Nearby** that suggests which folders are worth bringing across, based on what you actually use (the NTFS change journal knows).
+- **Instant rescans:** cache name lookups on disk, show them right away, and refresh them in the background so they never go stale.
 - **WinGet Configuration export,** so `winget configure` can rebuild a PC from an AppMigrate scan, no AppMigrate required.
 - **A "time machine":** quietly keep a dated manifest in OneDrive, because most migrations happen *after* a PC dies.
 - **A headless mode** in the main exe, so the PowerShell scripts can retire.
-- A proper details panel, live per-app status during installs, and a **Retry failed** button.
+- **A v2 tidy-up of the UI:** a proper details panel, live per-app status during installs, and a **Retry failed** button.
 
 ## Privacy
 
