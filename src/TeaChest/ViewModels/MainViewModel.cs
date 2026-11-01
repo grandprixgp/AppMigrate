@@ -64,6 +64,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _manualCount;
     private int _storeCount;
     private InstallReport? _lastReport;
+    private IReadOnlyList<PlanItem> _failedItems = Array.Empty<PlanItem>();
     private string _origin = "";
 
     public MainViewModel()
@@ -273,6 +274,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _lastReport;
         private set => SetField(ref _lastReport, value);
+    }
+
+    /// <summary>The rows that failed in the last run, ready for a retry. Empty before one.</summary>
+    public IReadOnlyList<PlanItem> FailedItems
+    {
+        get => _failedItems;
+        private set => SetField(ref _failedItems, value);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -496,8 +504,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
+            // Progress<T> captures the UI context here, so the row updates happen on the UI thread.
             var progress = new Progress<InstallProgress>(p =>
             {
+                ApplyInstallProgress(p);
                 ProgressValue = p.Total > 0 ? (double)p.Current / p.Total * 100 : 0;
                 if (!string.IsNullOrWhiteSpace(p.Status))
                 {
@@ -535,12 +545,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         finally
         {
+            FailedItems = SelectFailed(PlanItems);
             IsBusy = false;
             IsProgressIndeterminate = false;
             _cts?.Dispose();
             _cts = null;
         }
     }
+
+    // The row carries its own plan item, so this needs no lookup and no guessing from the name.
+    internal static void ApplyInstallProgress(InstallProgress progress)
+    {
+        if (progress.Item == null || string.IsNullOrEmpty(progress.Status)) return;
+        progress.Item.Status = progress.Status;
+        progress.Item.StatusDetail = progress.Detail;
+    }
+
+    internal static IReadOnlyList<PlanItem> SelectFailed(IEnumerable<PlanItem> items)
+        => items.Where(item => item.Status == "Failed").ToList();
 
     public void Cancel()
     {
