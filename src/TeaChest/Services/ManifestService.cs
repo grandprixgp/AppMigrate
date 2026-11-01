@@ -51,9 +51,6 @@ public sealed class ManifestService
         };
     }
 
-    // TODO: also write a configuration.winget (WinGet Configuration / DSC YAML) next to the manifest.
-    // Then `winget configure apps.winget` or Dev Home could rebuild the PC without TeaChest at
-    // all, which feels like the right kind of "no lock-in".
     public async Task SaveAsync(string path, IEnumerable<AppItem> apps, CancellationToken cancellationToken = default)
     {
         ManifestDocument document = CreateDocument(apps);
@@ -66,6 +63,18 @@ public sealed class ManifestService
 
         await File.WriteAllTextAsync(Path.ChangeExtension(path, ".csv"), BuildCsv(document.Apps), new UTF8Encoding(true), cancellationToken).ConfigureAwait(false);
         await File.WriteAllTextAsync(Path.ChangeExtension(path, ".md"), BuildMarkdown(document.Apps), new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+
+        string wingetPath = Path.ChangeExtension(path, ".winget");
+        string? configuration = WingetConfigurationWriter.Build(document.Apps);
+        if (configuration == null)
+        {
+            // Without this a stale file would outlive the manifest that described it.
+            File.Delete(wingetPath);
+        }
+        else
+        {
+            await File.WriteAllTextAsync(wingetPath, configuration, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public static List<AppItem> ToItems(ManifestDocument document)
