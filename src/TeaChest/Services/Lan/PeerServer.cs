@@ -29,6 +29,7 @@ public sealed class PeerServer : IAsyncDisposable
     private readonly KnownPeers _known;
     private readonly IInventoryProvider _inventory;
     private readonly Func<PairingRequest, CancellationToken, Task<bool>> _confirmPairing;
+    private readonly PairingThrottle _pairingThrottle = new(() => DateTimeOffset.UtcNow);
     private readonly SemaphoreSlim _sessions = new(MaxSessions, MaxSessions);
     private readonly CancellationTokenSource _cts = new();
     private TcpListener? _listener;
@@ -208,6 +209,13 @@ public sealed class PeerServer : IAsyncDisposable
             return false;
         }
 
+        if (!_pairingThrottle.TryBegin(remote))
+        {
+            await SendErrorAsync(ssl, "Too many pairing attempts. Wait a moment and try again.", token).ConfigureAwait(false);
+            Activity?.Invoke($"Ignored a pairing request from {peer.Name} ({remote}): too many attempts in a row.");
+            return false;
+        }
+
         string code = Pairing.Code(_identity.Fingerprint, clientFingerprint, clientNonce, serverNonce);
         bool accepted;
         using (var wait = CancellationTokenSource.CreateLinkedTokenSource(token))
@@ -226,10 +234,13 @@ public sealed class PeerServer : IAsyncDisposable
         await FrameCodec.WriteAsync(ssl, new PeerMessage { Type = PeerMessageTypes.PairResult, Accepted = accepted }, token).ConfigureAwait(false);
         if (!accepted)
         {
+            // A timeout arrives here as a decline too, and should count the same way.
+            _pairingThrottle.Declined(remote);
             Activity?.Invoke($"Pairing with {peer.Name} was declined.");
             return false;
         }
 
+        _pairingThrottle.Accepted(remote);
         _known.Add(clientFingerprint, peer);
         Activity?.Invoke($"Paired with {peer.Name}.");
         return true;
