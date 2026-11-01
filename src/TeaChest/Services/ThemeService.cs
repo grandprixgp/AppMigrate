@@ -98,11 +98,11 @@ public static class ThemeService
 
             // Pin the non-client colors to the app palette. Without this, Windows tints
             // the caption with the user's accent color, which clashes with both themes.
-            int border = dark ? 0x00443222 : 0x00EBE1D7;
+            int border = dark ? 0x0026303A : 0x00C1D3DE;
             DwmSetWindowAttribute(handle, DwmBorderColor, ref border, sizeof(int));
-            int caption = dark ? 0x0016100B : 0x00FAF7F4;
+            int caption = dark ? 0x000B0F12 : 0x00D7E6EE;
             DwmSetWindowAttribute(handle, DwmCaptionColor, ref caption, sizeof(int));
-            int text = dark ? 0x00FCF7F1 : 0x00332313;
+            int text = dark ? 0x00DFECF4 : 0x0018212A;
             DwmSetWindowAttribute(handle, DwmTextColor, ref text, sizeof(int));
         }
         catch
