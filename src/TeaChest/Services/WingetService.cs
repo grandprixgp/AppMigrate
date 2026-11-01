@@ -8,6 +8,8 @@ namespace TeaChest.Services;
 
 public sealed record WingetRow(string Name, string Id, string Version, string Source, bool IdTruncated, bool NameTruncated, bool IsMsix, bool IsArp, string IdPrefix = "");
 public sealed record ExportedPackage(string Id, string Version, string Source);
+
+public sealed record NameMatch(string Id, MatchConfidence Confidence);
 public sealed record WingetInventory(IReadOnlyList<WingetRow> Rows, string? Warning, IReadOnlyList<ExportedPackage> Exported)
 {
     public WingetInventory(IReadOnlyList<WingetRow> rows, string? warning)
@@ -22,8 +24,8 @@ public sealed class WingetService
     private static readonly Regex TrailingVersion = new(@"^(.*?)\s+v?\d[\w.\-]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Parenthetical = new(@"\s*\([^)]*\)", RegexOptions.Compiled);
 
-    private readonly ConcurrentDictionary<string, string?> _idCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, string?> _storeIdCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, NameMatch?> _idCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, NameMatch?> _storeIdCache = new(StringComparer.OrdinalIgnoreCase);
 
     public async Task<WingetInventory> GetInventoryAsync(CancellationToken cancellationToken)
     {
@@ -85,11 +87,11 @@ public sealed class WingetService
         }
     }
 
-    public async Task<string?> ResolveIdAsync(string name, CancellationToken cancellationToken)
+    public async Task<NameMatch?> ResolveIdAsync(string name, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         string cacheKey = name;
-        if (_idCache.TryGetValue(cacheKey, out string? cached)) return cached;
+        if (_idCache.TryGetValue(cacheKey, out NameMatch? cached)) return cached;
 
         foreach (string candidate in Candidates(name))
         {
@@ -103,15 +105,16 @@ public sealed class WingetService
             string? id = ParseShowId(show.Output);
             if (id != null)
             {
-                _idCache[cacheKey] = id;
-                return id;
+                var match = new NameMatch(id, Grade(name, candidate, MatchConfidence.Exact));
+                _idCache[cacheKey] = match;
+                return match;
             }
 
-            string? searchId = await SearchIdAsync(candidate, cancellationToken).ConfigureAwait(false);
-            if (searchId != null)
+            NameMatch? searchMatch = await SearchIdAsync(name, candidate, cancellationToken).ConfigureAwait(false);
+            if (searchMatch != null)
             {
-                _idCache[cacheKey] = searchId;
-                return searchId;
+                _idCache[cacheKey] = searchMatch;
+                return searchMatch;
             }
         }
 
@@ -119,10 +122,10 @@ public sealed class WingetService
         return null;
     }
 
-    public async Task<string?> ResolveStoreIdAsync(string name, CancellationToken cancellationToken)
+    public async Task<NameMatch?> ResolveStoreIdAsync(string name, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
-        if (_storeIdCache.TryGetValue(name, out string? cached)) return cached;
+        if (_storeIdCache.TryGetValue(name, out NameMatch? cached)) return cached;
 
         ProcessResult result = await ProcessRunner.RunAsync(
             "winget.exe",
@@ -131,9 +134,9 @@ public sealed class WingetService
             TimeSpan.FromSeconds(30),
             cancellationToken).ConfigureAwait(false);
 
-        string? id = PickSearchId(result.Output, name, storeOnly: true);
-        _storeIdCache[name] = id;
-        return id;
+        NameMatch? match = PickSearchMatch(result.Output, name, storeOnly: true);
+        _storeIdCache[name] = match;
+        return match;
     }
 
     public async Task<ProcessResult> InstallAsync(
@@ -179,7 +182,7 @@ public sealed class WingetService
         return await ProcessRunner.RunAsync("winget.exe", args, onLine, TimeSpan.FromMinutes(30), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<string?> SearchIdAsync(string candidate, CancellationToken cancellationToken)
+    private async Task<NameMatch?> SearchIdAsync(string originalName, string candidate, CancellationToken cancellationToken)
     {
         ProcessResult result = await ProcessRunner.RunAsync(
             "winget.exe",
@@ -188,7 +191,8 @@ public sealed class WingetService
             TimeSpan.FromSeconds(30),
             cancellationToken).ConfigureAwait(false);
 
-        return PickSearchId(result.Output, candidate, storeOnly: false);
+        NameMatch? match = PickSearchMatch(result.Output, candidate, storeOnly: false);
+        return match == null ? null : match with { Confidence = Grade(originalName, candidate, match.Confidence) };
     }
 
     internal static string? ParseShowId(string output)
@@ -207,10 +211,8 @@ public sealed class WingetService
     /// a version-insensitive match is accepted only when it is the single such row, so that
     /// "Python 3.12" never resolves to a different Python release.
     /// </summary>
-    internal static string? PickSearchId(string output, string candidate, bool storeOnly)
+    internal static NameMatch? PickSearchMatch(string output, string candidate, bool storeOnly)
     {
-        // TODO: return how confident the match was (exact vs. loose) so the grid can flag
-        // guesses for a quick human check before anything gets installed.
         WingetTable? table = WingetTable.Parse(output);
         if (table == null || table.ColumnCount < 2) return null;
 
@@ -229,10 +231,25 @@ public sealed class WingetService
                 if (!PackageIds.IsStoreId(id)) continue;
             }
 
-            if (strict.Length > 0 && TextUtil.NormalizeStrict(name) == strict) return id;
+            if (strict.Length > 0 && TextUtil.NormalizeStrict(name) == strict) return new NameMatch(id, MatchConfidence.Exact);
             if (loose.Length > 0 && TextUtil.NormalizeLoose(name) == loose) looseMatches.Add(id);
         }
-        return looseMatches.Count == 1 ? looseMatches.First() : null;
+        return looseMatches.Count == 1 ? new NameMatch(looseMatches.First(), MatchConfidence.Loose) : null;
+    }
+
+    internal static string? PickSearchId(string output, string candidate, bool storeOnly)
+        => PickSearchMatch(output, candidate, storeOnly)?.Id;
+
+    /// <summary>
+    /// An exact hit against a shortened candidate is still a guess: "App 3.12.1" → "App" could be
+    /// any release. Only an exact hit on the app's own name earns Exact.
+    /// </summary>
+    internal static MatchConfidence Grade(string originalName, string candidate, MatchConfidence found)
+    {
+        if (found != MatchConfidence.Exact) return found;
+        return string.Equals(TextUtil.NormalizeStrict(candidate), TextUtil.NormalizeStrict(originalName), StringComparison.Ordinal)
+            ? MatchConfidence.Exact
+            : MatchConfidence.Loose;
     }
 
     internal static IReadOnlyList<WingetRow> ParseList(string raw)

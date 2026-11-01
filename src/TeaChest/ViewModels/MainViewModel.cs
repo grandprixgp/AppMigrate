@@ -634,6 +634,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
            && string.Equals(current.Id, next.Id, StringComparison.Ordinal)
            && string.Equals(current.Source, next.Source, StringComparison.Ordinal)
            && string.Equals(current.InstallType, next.InstallType, StringComparison.Ordinal)
+           && current.MatchConfidence == next.MatchConfidence
            && string.Equals(current.Version, next.Version, StringComparison.Ordinal)
            && string.Equals(current.Publisher, next.Publisher, StringComparison.Ordinal)
            && string.Equals(current.Scope, next.Scope, StringComparison.Ordinal)

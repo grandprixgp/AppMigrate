@@ -363,13 +363,35 @@ public sealed class CollectionDiffTests
         var item = new AppItem();
         foreach (PropertyInfo property in WritableProperties())
         {
-            property.SetValue(item, property.PropertyType == typeof(bool) ? true : "base-" + property.Name);
+            property.SetValue(item, SampleValue(property));
         }
         return item;
     }
 
+    private static object SampleValue(PropertyInfo property)
+    {
+        if (property.PropertyType == typeof(bool)) return true;
+        if (property.PropertyType.IsEnum)
+        {
+            Array values = Enum.GetValues(property.PropertyType);
+            return values.GetValue(values.Length - 1)!;
+        }
+        return "base-" + property.Name;
+    }
+
     private static object DifferentValue(PropertyInfo property, object current)
-        => property.PropertyType == typeof(bool) ? !(bool)current : current + "-changed";
+    {
+        if (property.PropertyType == typeof(bool)) return !(bool)current;
+        if (property.PropertyType.IsEnum)
+        {
+            foreach (object value in Enum.GetValues(property.PropertyType))
+            {
+                if (!value.Equals(current)) return value;
+            }
+            throw new InvalidOperationException($"{property.Name} has only one value, so it cannot differ.");
+        }
+        return current + "-changed";
+    }
 
     private static List<string> Pick(Random random, string[] pool)
         => pool.OrderBy(_ => random.Next()).Take(random.Next(0, pool.Length + 1)).ToList();
