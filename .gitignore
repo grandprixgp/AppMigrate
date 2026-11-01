@@ -12,6 +12,8 @@ apps.md
 teachest.json
 teachest.csv
 teachest.md
+teachest.winget
+apps.winget
 install-log-*.txt
 install-report-*.json
 manual-actions-*.txt
