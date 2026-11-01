@@ -138,13 +138,19 @@ public partial class MainWindow : Window
         InstallReport? report = await _viewModel.InstallAsync();
         if (report == null) return;
 
-        string message = $"Installed: {report.Installed}\nAlready present: {report.AlreadyInstalled}\nManual: {report.Manual}\nFailed: {report.Failed}\n\n" +
-                         $"Report: {report.ReportPath}\nLog: {report.LogPath}";
+        string message = $"Installed: {report.Installed}\nAlready present: {report.AlreadyInstalled}\nManual: {report.Manual}\nFailed: {report.Failed}";
+        if (report.RebootRequired > 0) message += $"\nInstalled, restart needed: {report.RebootRequired}";
+        if (report.Cancelled) message += $"\nNot attempted (cancelled): {report.NotAttempted}";
+        message += $"\n\nReport: {report.ReportPath}\nLog: {report.LogPath}";
         if (report.ManualActionsPath.Length > 0) message += $"\nManual actions: {report.ManualActionsPath}";
-        MessageBox.Show(this, message,
-            report.Failed > 0 ? "Install finished with errors" : "Install complete",
+        bool warn = report.Failed > 0 || report.Cancelled;
+        string title = report.Cancelled ? "Install cancelled"
+            : report.Failed > 0 ? "Install finished with errors"
+            : report.RebootRequired > 0 ? "Install complete - restart needed"
+            : "Install complete";
+        MessageBox.Show(this, message, title,
             MessageBoxButton.OK,
-            report.Failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            warn ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }
 
     private void ThemeButton_Click(object sender, RoutedEventArgs e)
