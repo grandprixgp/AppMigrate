@@ -77,6 +77,49 @@ public class WingetParsingTests
         Assert.Equal("8.6.9", rows[0].Version);
     }
 
+    // Real header strings from winget-cli's Localization/Resources/ko-KR/winget.resw. Korean is the
+    // only shipped language with spaces inside column titles ("장치 ID", "사용 가능").
+    [Fact]
+    public void ParsesKoreanListWithMultiWordHeaders()
+    {
+        string korean = WingetFixture.Table(
+            new[] { "이름", "장치 ID", "버전", "사용 가능", "원본" },
+            new[] { "메모장++", "Notepad++.Notepad++", "8.6.9", "8.7.1", "winget" },
+            new[] { "Git", "Git.Git", "2.45.1", "", "winget" });
+
+        var rows = WingetService.ParseList(korean);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(("메모장++", "Notepad++.Notepad++", "8.6.9", "winget"), (rows[0].Name, rows[0].Id, rows[0].Version, rows[0].Source));
+        Assert.Equal("Git.Git", rows[1].Id);
+    }
+
+    [Fact]
+    public void KoreanAvailableColumnSplitDoesNotAffectResults()
+    {
+        // Worst case: every "available" version is too short to rule out the gap inside "사용 가능",
+        // so that title gets split in two. Name/Id/Version/Source must still come out right.
+        string korean = WingetFixture.Table(
+            new[] { "이름", "장치 ID", "버전", "사용 가능", "원본" },
+            new[] { "Git", "Git.Git", "2.45", "2.46", "winget" });
+
+        WingetRow row = Assert.Single(WingetService.ParseList(korean));
+
+        Assert.Equal(("Git", "Git.Git", "2.45", "winget"), (row.Name, row.Id, row.Version, row.Source));
+    }
+
+    [Fact]
+    public void ParsesTraditionalChineseList()
+    {
+        string chinese = WingetFixture.Table(
+            new[] { "名稱", "識別碼", "版本", "可用", "來源" },
+            new[] { "記事本++", "Notepad++.Notepad++", "8.6.9", "8.7.1", "winget" });
+
+        WingetRow row = Assert.Single(WingetService.ParseList(chinese));
+
+        Assert.Equal(("記事本++", "Notepad++.Notepad++", "8.6.9", "winget"), (row.Name, row.Id, row.Version, row.Source));
+    }
+
     [Fact]
     public void MultiWordHeaderDoesNotSplitAColumn()
     {
