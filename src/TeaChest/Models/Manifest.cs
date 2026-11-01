@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using TeaChest.Services;
 
 namespace TeaChest.Models;
 
@@ -31,6 +32,11 @@ public sealed class AppRecord
     public string Id { get; set; } = "";
     public string Source { get; set; } = "";
     public string InstallType { get; set; } = "manual";
+
+    /// <summary>How sure the name lookup was. Older manifests have no value, which means None.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MatchConfidence MatchConfidence { get; set; }
+
     public string Version { get; set; } = "";
     public string Publisher { get; set; } = "";
     public string Scope { get; set; } = "";
@@ -57,6 +63,7 @@ public sealed class AppRecord
             Id = Id,
             Source = Source,
             InstallType = string.IsNullOrWhiteSpace(InstallType) ? InferInstallType(Source, Id) : InstallType,
+            MatchConfidence = MatchConfidence,
             Version = Version,
             Publisher = Publisher,
             Scope = Scope,
@@ -85,6 +92,7 @@ public sealed class AppRecord
             Id = item.Id,
             Source = item.Source,
             InstallType = item.InstallType,
+            MatchConfidence = item.MatchConfidence,
             Version = item.Version,
             Publisher = item.Publisher,
             Scope = item.Scope,

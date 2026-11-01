@@ -92,17 +92,23 @@ public sealed class ScanService
                 {
                     if (result.WingetId != null)
                     {
-                        item.Id = result.WingetId;
+                        item.Id = result.WingetId.Id;
                         item.Source = "winget";
                         item.InstallType = "winget";
-                        item.Notes = "Matched to a WinGet package by name.";
+                        item.MatchConfidence = result.WingetId.Confidence;
+                        item.Notes = result.WingetId.Confidence == MatchConfidence.Loose
+                            ? "Matched to a WinGet package by a loose name match. Worth a quick check."
+                            : "Matched to a WinGet package by name.";
                     }
                     else if (result.StoreId != null)
                     {
-                        item.Id = result.StoreId;
+                        item.Id = result.StoreId.Id;
                         item.Source = "msstore";
                         item.InstallType = "msstore";
-                        item.Notes = "Matched to a Microsoft Store product ID.";
+                        item.MatchConfidence = result.StoreId.Confidence;
+                        item.Notes = result.StoreId.Confidence == MatchConfidence.Loose
+                            ? "Matched to a Microsoft Store product ID by a loose name match. Worth a quick check."
+                            : "Matched to a Microsoft Store product ID.";
                     }
                     else if (item.IsWinget)
                     {
@@ -310,13 +316,13 @@ public sealed class ScanService
 
     private async Task<ResolveResult> ResolveOneAsync(AppItem item, CancellationToken cancellationToken)
     {
-        string? wingetId = await _winget.ResolveIdAsync(item.Name, cancellationToken).ConfigureAwait(false);
-        if (wingetId != null) return new ResolveResult(wingetId, null);
+        NameMatch? wingetMatch = await _winget.ResolveIdAsync(item.Name, cancellationToken).ConfigureAwait(false);
+        if (wingetMatch != null) return new ResolveResult(wingetMatch, null);
 
         if (item.Source.Equals("msix", StringComparison.OrdinalIgnoreCase) && !AppClassifier.IsInbox(item))
         {
-            string? storeId = await _winget.ResolveStoreIdAsync(item.Name, cancellationToken).ConfigureAwait(false);
-            if (storeId != null) return new ResolveResult(null, storeId);
+            NameMatch? storeMatch = await _winget.ResolveStoreIdAsync(item.Name, cancellationToken).ConfigureAwait(false);
+            if (storeMatch != null) return new ResolveResult(null, storeMatch);
         }
         return new ResolveResult(null, null);
     }
@@ -354,5 +360,5 @@ public sealed class ScanService
     }
 
     private sealed record SourceBatch(string Name, IReadOnlyList<AppItem> Items, string? Warning);
-    private sealed record ResolveResult(string? WingetId, string? StoreId);
+    private sealed record ResolveResult(NameMatch? WingetId, NameMatch? StoreId);
 }
