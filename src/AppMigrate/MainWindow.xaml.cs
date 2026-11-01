@@ -98,6 +98,8 @@ public partial class MainWindow : Window
 
     private void CancelConnect_Click(object sender, RoutedEventArgs e) => _nearby.CancelConnect();
 
+    private void OpenNetworkSettings_Click(object sender, RoutedEventArgs e) => _nearby.OpenNetworkSettings();
+
     private void InstallMissing_Click(object sender, RoutedEventArgs e)
     {
         if (_viewModel.IsBusy)

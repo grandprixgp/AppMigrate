@@ -66,6 +66,8 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _idleTimer;
     private readonly DispatcherTimer _pruneTimer;
+    private readonly DispatcherTimer _networkTimer;
+    private string _networkWarning = "";
     private DeviceIdentity? _identity;
     private KnownPeers? _known;
     private PeerServer? _server;
@@ -101,6 +103,9 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
         };
         _pruneTimer = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromSeconds(2) };
         _pruneTimer.Tick += (_, _) => PruneDevices();
+        // Re-checked while sharing so the warning clears as soon as the network is switched to Private.
+        _networkTimer = new DispatcherTimer(DispatcherPriority.Background, dispatcher) { Interval = TimeSpan.FromSeconds(5) };
+        _networkTimer.Tick += (_, _) => RefreshNetworkWarning();
     }
 
     public ObservableCollection<NearbyDevice> Devices { get; } = new();
@@ -141,6 +146,17 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
     }
 
     public bool HasShareStatus => ShareStatus.Length > 0;
+
+    public string NetworkWarning
+    {
+        get => _networkWarning;
+        private set
+        {
+            if (SetField(ref _networkWarning, value)) OnPropertyChanged(nameof(HasNetworkWarning));
+        }
+    }
+
+    public bool HasNetworkWarning => NetworkWarning.Length > 0;
 
     public bool IsConnecting
     {
@@ -331,6 +347,9 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
 
             IsSharing = true;
             RestartIdleTimer();
+            RefreshNetworkWarning();
+            _networkTimer.Start();
+            if (HasNetworkWarning) _main.Log("Nearby: " + NetworkWarning);
             string where = $"{_identity!.Name} at {LocalAddresses} (port {server.Port})";
             ShareStatus = !firewallReady
                 ? $"Sharing as {where}, but the firewall rule was not added, so other PCs may be blocked. Approve the UAC prompt next time, or make sure this network is set to Private."
@@ -353,6 +372,8 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
     public async Task StopSharingAsync(bool keepStatus = false)
     {
         _idleTimer.Stop();
+        _networkTimer.Stop();
+        NetworkWarning = "";
         _pendingPairing?.TrySetResult(false);
         _responder?.Dispose();
         _responder = null;
@@ -400,6 +421,28 @@ public sealed class NearbyViewModel : INotifyPropertyChanged, IInventoryProvider
     }
 
     public void AnswerPairing(bool accept) => _pendingPairing?.TrySetResult(accept);
+
+    private void RefreshNetworkWarning()
+    {
+        List<LanNetwork> publicNetworks = NetworkProfiles.GetLanNetworks().Where(n => n.IsPublic).ToList();
+        NetworkWarning = publicNetworks.Count == 0
+            ? ""
+            : $"Windows treats {string.Join(" and ", publicNetworks.Select(n => $"\"{n.Name}\" ({n.Adapter})"))} as a Public network, " +
+              "so it will block other PCs from connecting here. If this is your home or office network, set it to Private: " +
+              "Settings → Network & internet → your connection → Network profile type.";
+    }
+
+    public void OpenNetworkSettings()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:network-status") { UseShellExecute = true });
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // Settings app unavailable (e.g. Server Core); the warning text already says where to go.
+        }
+    }
 
     // ---- Connecting -----------------------------------------------------------------------
 

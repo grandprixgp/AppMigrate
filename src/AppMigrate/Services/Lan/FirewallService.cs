@@ -16,8 +16,6 @@ public static class FirewallService
 
     public static string ExePath => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "AppMigrate.exe");
 
-    // TODO: detect when the active network is set to Public. The rule is Private-only, so sharing
-    // silently won't work there, and it'd be kinder to just tell people.
     public static async Task<bool> RuleExistsAsync(CancellationToken cancellationToken)
     {
         ProcessResult result = await ProcessRunner.RunAsync(

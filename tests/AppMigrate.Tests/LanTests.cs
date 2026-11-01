@@ -235,6 +235,59 @@ public class DiscoveryTests
     }
 }
 
+public class NetworkProfileTests
+{
+    private static readonly Guid Ethernet = Guid.NewGuid(), Warp = Guid.NewGuid(), Sandbox = Guid.NewGuid();
+
+    // Mirrors a real desktop: Ethernet LAN, Cloudflare WARP tunnel, Windows Sandbox NAT switch.
+    private static readonly Dictionary<Guid, AdapterInfo> Adapters = new()
+    {
+        [Ethernet] = new AdapterInfo(Ethernet, "Ethernet", HasIPv4Gateway: true, HasLanAddress: true),
+        [Warp] = new AdapterInfo(Warp, "CloudflareWARP", HasIPv4Gateway: false, HasLanAddress: false),
+        [Sandbox] = new AdapterInfo(Sandbox, "vEthernet (AppSandboxNAT)", HasIPv4Gateway: false, HasLanAddress: true)
+    };
+
+    [Fact]
+    public void PublicLanIsFlagged()
+    {
+        var networks = NetworkProfiles.SelectLanNetworks(new[]
+        {
+            new NetworkConnectionInfo("Network", 0, Ethernet),
+            new NetworkConnectionInfo("CloudflareWARP", 0, Warp)
+        }, Adapters);
+
+        LanNetwork lan = Assert.Single(networks);
+        Assert.Equal(("Network", "Ethernet", true), (lan.Name, lan.Adapter, lan.IsPublic));
+    }
+
+    [Fact]
+    public void PublicVpnAloneIsNotAWarning()
+    {
+        var networks = NetworkProfiles.SelectLanNetworks(new[]
+        {
+            new NetworkConnectionInfo("Network", 1, Ethernet),
+            new NetworkConnectionInfo("CloudflareWARP", 0, Warp)
+        }, Adapters);
+
+        Assert.DoesNotContain(networks, n => n.IsPublic);
+    }
+
+    [Fact]
+    public void UnknownAndVirtualAdaptersAreIgnored()
+    {
+        var networks = NetworkProfiles.SelectLanNetworks(new[]
+        {
+            new NetworkConnectionInfo("Sandbox", 0, Sandbox),
+            new NetworkConnectionInfo("Mystery", 0, Guid.NewGuid())
+        }, Adapters);
+
+        Assert.Empty(networks);
+    }
+
+    [Fact]
+    public void RealMachineQueryDoesNotThrow() => NetworkProfiles.GetLanNetworks();
+}
+
 public class InventoryDiffTests
 {
     [Fact]
