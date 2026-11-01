@@ -482,7 +482,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _lastPlan = null;
             OnPropertyChanged(nameof(CanInstall));
             ProgressValue = 100;
-            StatusText = $"Install finished · {report.Installed} installed · {report.Failed} failed · {report.Manual} manual";
+            string reboot = report.RebootRequired > 0 ? $" · {report.RebootRequired} need a restart" : "";
+            StatusText = report.Cancelled
+                ? $"Install cancelled · {report.Installed + report.RebootRequired} installed · {report.NotAttempted} not attempted"
+                : $"Install finished · {report.Installed} installed{reboot} · {report.Failed} failed · {report.Manual} manual";
             AppendLog($"Report: {report.ReportPath}");
             if (!string.IsNullOrWhiteSpace(report.ManualActionsPath)) AppendLog($"Manual actions: {report.ManualActionsPath}");
             return report;
