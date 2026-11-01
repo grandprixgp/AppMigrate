@@ -62,6 +62,19 @@ public sealed class InstallService
     };
 
     private readonly WingetService _winget = new();
+    private readonly Func<AppItem, InstallOptions, Action<string>?, CancellationToken, Task<ProcessResult>> _runInstall;
+
+    public InstallService()
+        : this(null)
+    {
+    }
+
+    /// <summary>Passing a runner lets tests drive each app's outcome without starting WinGet.</summary>
+    public InstallService(Func<AppItem, InstallOptions, Action<string>?, CancellationToken, Task<ProcessResult>>? runInstall)
+    {
+        _runInstall = runInstall ?? ((app, options, onLine, token) => _winget.InstallAsync(
+            app, options.Force, options.Interactive, options.MatchScope, options.PinVersions, token, onLine));
+    }
 
     public async Task<InstallPlan> BuildPlanAsync(
         IReadOnlyList<AppItem> apps,
@@ -183,16 +196,13 @@ public sealed class InstallService
                     Current = index,
                     Total = total,
                     AppName = app.Name,
-                    Status = "Installing"
+                    Status = "Installing",
+                    Item = item
                 });
 
-                ProcessResult result = await _winget.InstallAsync(
+                ProcessResult result = await _runInstall(
                     app,
-                    options.Force,
-                    options.Interactive,
-                    options.MatchScope,
-                    options.PinVersions,
-                    cancellationToken,
+                    options,
                     line =>
                     {
                         lock (gate) appOutput.AppendLine(line);
@@ -203,9 +213,11 @@ public sealed class InstallService
                             Total = total,
                             AppName = app.Name,
                             Status = "Installing",
-                            Line = line
+                            Line = line,
+                            Item = item
                         });
-                    }).ConfigureAwait(false);
+                    },
+                    cancellationToken).ConfigureAwait(false);
 
                 stopwatch.Stop();
                 bool appCancelled = cancellationToken.IsCancellationRequested;
@@ -218,7 +230,9 @@ public sealed class InstallService
                     Current = index,
                     Total = total,
                     AppName = app.Name,
-                    Status = status
+                    Status = status,
+                    Detail = detail,
+                    Item = item
                 });
 
                 results.Add(new InstallResultRecord
