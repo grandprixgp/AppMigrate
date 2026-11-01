@@ -170,33 +170,57 @@ public class PairingThrottleSessionTests : IAsyncLifetime
     }
 
     private readonly DeviceIdentity _serverIdentity = DeviceIdentity.CreateEphemeral("OLD-PC");
-    private readonly DeviceIdentity _clientIdentity = DeviceIdentity.CreateEphemeral("NEW-PC");
+    private readonly List<DeviceIdentity> _clientIdentities = new();
     private readonly KnownPeers _serverPeers = KnownPeers.InMemory();
-    private readonly KnownPeers _clientPeers = KnownPeers.InMemory();
     private int _confirmCalls;
+    private TaskCompletionSource<bool>? _hold;
     private PeerServer _server = null!;
+
+    private IPEndPoint Endpoint => new(IPAddress.Loopback, _server.Port);
 
     public Task InitializeAsync()
     {
-        _server = new PeerServer(_serverIdentity, _serverPeers, new TinyInventory(), (_, _) =>
-        {
-            Interlocked.Increment(ref _confirmCalls);
-            return Task.FromResult(false);
-        });
+        _server = new PeerServer(_serverIdentity, _serverPeers, new TinyInventory(), ConfirmAsync);
         _server.Start(0);
         return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
+        _hold?.TrySetResult(false);
         await _server.DisposeAsync();
         _serverIdentity.Dispose();
-        _clientIdentity.Dispose();
+        foreach (DeviceIdentity identity in _clientIdentities) identity.Dispose();
     }
 
-    private Task<InventoryResult> FetchAsync()
-        => new PeerClient(_clientIdentity, _clientPeers)
-            .FetchInventoryAsync(new IPEndPoint(IPAddress.Loopback, _server.Port), 0, null, CancellationToken.None);
+    private async Task<bool> ConfirmAsync(PairingRequest request, CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _confirmCalls);
+        TaskCompletionSource<bool>? hold = _hold;
+        return hold is null
+            ? false
+            : await hold.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private PeerClient NewClient(string name)
+    {
+        DeviceIdentity identity = DeviceIdentity.CreateEphemeral(name);
+        _clientIdentities.Add(identity);
+        return new PeerClient(identity, KnownPeers.InMemory());
+    }
+
+    private Task<InventoryResult> FetchAsync(PeerClient client, CancellationToken token = default)
+        => client.FetchInventoryAsync(Endpoint, 0, null, token);
+
+    private static async Task WaitUntil(Func<bool> condition, string what)
+    {
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline) throw new TimeoutException($"Timed out waiting for {what}.");
+            await Task.Delay(10);
+        }
+    }
 
     [Fact]
     public async Task ADeclinedClientCannotPromptAgainStraightAway()
@@ -207,13 +231,75 @@ public class PairingThrottleSessionTests : IAsyncLifetime
             if (line.Contains("too many attempts", StringComparison.OrdinalIgnoreCase)) throttled.TrySetResult(line);
         };
 
-        await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync());
+        PeerClient client = NewClient("NEW-PC");
+        await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync(client));
         Assert.Equal(1, _confirmCalls);
 
-        var second = await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync());
+        var second = await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync(client));
         Assert.Equal("Too many pairing attempts. Wait a moment and try again.", second.Message);
         Assert.Equal(1, _confirmCalls);
 
         await throttled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task AClientThatHangsUpStillLeavesItsDeclineBehind()
+    {
+        _hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var settled = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnActivity(string line)
+        {
+            // Either outcome proves the decline was recorded first: the write failed, or it went through.
+            if (line.Contains("NEW-PC-HANGUP", StringComparison.Ordinal)) settled.TrySetResult(line);
+        }
+
+        _server.Activity += OnActivity;
+        try
+        {
+            PeerClient client = NewClient("NEW-PC-HANGUP");
+            using var cancel = new CancellationTokenSource();
+            Task<InventoryResult> first = FetchAsync(client, cancel.Token);
+            await WaitUntil(() => Volatile.Read(ref _confirmCalls) == 1, "the pairing prompt");
+
+            cancel.Cancel();
+            Assert.NotNull(await Record.ExceptionAsync(() => first));
+            _hold.SetResult(false);
+            await settled.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+            var retry = await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync(client));
+            Assert.Equal("Too many pairing attempts. Wait a moment and try again.", retry.Message);
+            Assert.Equal(1, Volatile.Read(ref _confirmCalls));
+        }
+        finally
+        {
+            _server.Activity -= OnActivity;
+            _hold.TrySetResult(false);
+        }
+    }
+
+    [Fact]
+    public async Task AnotherRequestCannotTakeAnOpenPromptSlot()
+    {
+        _hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        PeerClient firstClient = NewClient("NEW-PC-FIRST");
+        Task<InventoryResult> first = FetchAsync(firstClient);
+        await WaitUntil(() => Volatile.Read(ref _confirmCalls) == 1, "the first pairing prompt");
+
+        foreach (string name in new[] { "NEW-PC-SECOND", "NEW-PC-THIRD" })
+        {
+            PeerClient other = NewClient(name);
+            var refused = await Assert.ThrowsAsync<PeerRejectedException>(() => FetchAsync(other));
+
+            // A plain "not accepted", not the throttle error: another PC's prompt must not
+            // count against this address.
+            Assert.Equal("OLD-PC did not accept the pairing request.", refused.Message);
+            Assert.DoesNotContain("Too many", refused.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        Assert.Equal(1, Volatile.Read(ref _confirmCalls));
+
+        _hold.SetResult(true);
+        InventoryResult result = await first.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(result.NewlyPaired);
+        Assert.Equal(1, Volatile.Read(ref _confirmCalls));
     }
 }
