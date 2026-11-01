@@ -104,7 +104,7 @@ Next time, the two PCs recognise each other and skip the code.
 
 ### Is it safe?
 
-We've tried hard to make sure it is:
+I've tried hard to make sure it is:
 
 - **Read-only.** The only thing a paired PC can ask for is the app list. It can't install anything, run anything, or browse files.
 - **Encrypted.** Everything goes over TLS between per-device certificates. Each certificate's key is stored in `%LOCALAPPDATA%\TeaChest` and encrypted for your Windows account.
@@ -204,7 +204,7 @@ They read and write the same `teachest.json` format as the app (the CLI can also
 
 ## Ideas for later
 
-Things we'd love to get to. They're also sprinkled through the code as `TODO`s if you fancy picking one up:
+Things I'd love to get to. They're also sprinkled through the code as `TODO`s if you fancy picking one up:
 
 - **More sources:** Scoop, Chocolatey, VS Code extensions, global npm/pipx/dotnet tools, WSL distros.
 - **Settings over Nearby:** carry app settings (VS Code, Windows Terminal, Git config) along with the app list, opt-in per app.
