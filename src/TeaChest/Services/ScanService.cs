@@ -17,10 +17,10 @@ public sealed class ScanService
     private readonly SelectionOptions _options;
     private readonly NameCache _names;
 
-    public ScanService(SelectionOptions? options = null, NameCache? nameCache = null)
+    public ScanService(SelectionOptions? options = null)
     {
         _options = options ?? new SelectionOptions();
-        _names = nameCache ?? new NameCache(AppPaths.DataDirectory);
+        _names = new NameCache(AppPaths.DataDirectory);
     }
 
     public async Task<ScanResult> ScanAsync(IProgress<ScanSnapshot>? progress, CancellationToken cancellationToken)

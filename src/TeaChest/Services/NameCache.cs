@@ -9,7 +9,7 @@ namespace TeaChest.Services;
 /// Remembers what a name lookup found, keyed by name and publisher, so a rescan can show
 /// answers straight away. Every scan still runs the real lookup; the cache only shortens the wait.
 /// </summary>
-public sealed class NameCache
+internal sealed class NameCache
 {
     internal const int Capacity = 5_000;
     internal const string FileName = "name-cache.json";
