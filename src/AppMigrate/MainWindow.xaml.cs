@@ -11,6 +11,7 @@ namespace AppMigrate;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private readonly NearbyViewModel _nearby;
 
     public MainWindow()
     {
@@ -18,6 +19,16 @@ public partial class MainWindow : Window
         _viewModel = new MainViewModel();
         _viewModel.Error += ViewModel_Error;
         DataContext = _viewModel;
+
+        _nearby = new NearbyViewModel(_viewModel, Dispatcher);
+        _nearby.PairingRequested += (_, _) =>
+        {
+            NearbyNav.IsChecked = true;
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+        };
+        _nearby.InstallListReady += (_, _) => InstallNav.IsChecked = true;
+        NearbyView.DataContext = _nearby;
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -38,23 +49,74 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (!_viewModel.IsBusy) return;
+        if (!_viewModel.IsBusy)
+        {
+            _ = _nearby.ShutdownAsync();
+            return;
+        }
         e.Cancel = true;
         MessageBox.Show(this, "An operation is still running. Wait for it to finish, or use Cancel in the status bar.", "AppMigrate", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private void CollectNav_Checked(object sender, RoutedEventArgs e)
+    private void CollectNav_Checked(object sender, RoutedEventArgs e) => ShowView(CollectView);
+
+    private void InstallNav_Checked(object sender, RoutedEventArgs e) => ShowView(InstallView);
+
+    private void NearbyNav_Checked(object sender, RoutedEventArgs e) => ShowView(NearbyView);
+
+    private void ShowView(Grid? view)
     {
-        if (CollectView == null || InstallView == null) return;
-        CollectView.Visibility = Visibility.Visible;
-        InstallView.Visibility = Visibility.Collapsed;
+        // Checked fires for the default tab while InitializeComponent is still building the views.
+        if (CollectView == null || InstallView == null || NearbyView == null || view == null) return;
+        CollectView.Visibility = view == CollectView ? Visibility.Visible : Visibility.Collapsed;
+        InstallView.Visibility = view == InstallView ? Visibility.Visible : Visibility.Collapsed;
+        NearbyView.Visibility = view == NearbyView ? Visibility.Visible : Visibility.Collapsed;
+
+        // Only search the network while someone is looking at the list.
+        if (view == NearbyView) _nearby?.StartBrowsing();
+        else _nearby?.StopBrowsing();
     }
 
-    private void InstallNav_Checked(object sender, RoutedEventArgs e)
+    private async void ShareButton_Click(object sender, RoutedEventArgs e) => await _nearby.ToggleSharingAsync();
+
+    private void ConfirmPairing_Click(object sender, RoutedEventArgs e) => _nearby.AnswerPairing(true);
+
+    private void RejectPairing_Click(object sender, RoutedEventArgs e) => _nearby.AnswerPairing(false);
+
+    private async void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
-        if (CollectView == null || InstallView == null) return;
-        CollectView.Visibility = Visibility.Collapsed;
-        InstallView.Visibility = Visibility.Visible;
+        if (DevicesList.SelectedItem is NearbyDevice device) await _nearby.ConnectAsync(device);
+        else if (_nearby.Devices.Count == 1) await _nearby.ConnectAsync(_nearby.Devices[0]);
+    }
+
+    private async void DevicesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DevicesList.SelectedItem is NearbyDevice device) await _nearby.ConnectAsync(device);
+    }
+
+    private async void ConnectManualButton_Click(object sender, RoutedEventArgs e) => await _nearby.ConnectManualAsync();
+
+    private void CancelConnect_Click(object sender, RoutedEventArgs e) => _nearby.CancelConnect();
+
+    private void OpenNetworkSettings_Click(object sender, RoutedEventArgs e) => _nearby.OpenNetworkSettings();
+
+    private void InstallMissing_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.IsBusy)
+        {
+            MessageBox.Show(this, "Wait for the current operation to finish first.", "AppMigrate", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (_viewModel.Apps.Count > 0)
+        {
+            MessageBoxResult replace = MessageBox.Show(this,
+                "This replaces the current app list with the apps missing on this PC. Save a manifest first if you need the current list.\n\nContinue?",
+                "Use missing apps",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Question);
+            if (replace != MessageBoxResult.OK) return;
+        }
+        _nearby.UseMissingAsInstallList();
     }
 
     private async void OpenButton_Click(object sender, RoutedEventArgs e)
@@ -138,13 +200,19 @@ public partial class MainWindow : Window
         InstallReport? report = await _viewModel.InstallAsync();
         if (report == null) return;
 
-        string message = $"Installed: {report.Installed}\nAlready present: {report.AlreadyInstalled}\nManual: {report.Manual}\nFailed: {report.Failed}\n\n" +
-                         $"Report: {report.ReportPath}\nLog: {report.LogPath}";
+        string message = $"Installed: {report.Installed}\nAlready present: {report.AlreadyInstalled}\nManual: {report.Manual}\nFailed: {report.Failed}";
+        if (report.RebootRequired > 0) message += $"\nInstalled, restart needed: {report.RebootRequired}";
+        if (report.Cancelled) message += $"\nNot attempted (cancelled): {report.NotAttempted}";
+        message += $"\n\nReport: {report.ReportPath}\nLog: {report.LogPath}";
         if (report.ManualActionsPath.Length > 0) message += $"\nManual actions: {report.ManualActionsPath}";
-        MessageBox.Show(this, message,
-            report.Failed > 0 ? "Install finished with errors" : "Install complete",
+        bool warn = report.Failed > 0 || report.Cancelled;
+        string title = report.Cancelled ? "Install cancelled"
+            : report.Failed > 0 ? "Install finished with errors"
+            : report.RebootRequired > 0 ? "Install complete - restart needed"
+            : "Install complete";
+        MessageBox.Show(this, message, title,
             MessageBoxButton.OK,
-            report.Failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            warn ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }
 
     private void ThemeButton_Click(object sender, RoutedEventArgs e)
@@ -163,6 +231,8 @@ public partial class MainWindow : Window
         MessageBox.Show(this, e.Message, e.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
+    // TODO: a MessageBox is a pretty sad details view. A side panel with the ID, where it was
+    // matched from, and an "open in Store / winget.run" link would be much nicer.
     private void AppsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (AppsGrid.SelectedItem is not AppItem app) return;

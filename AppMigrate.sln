@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{46A7BCB1-EF5
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppMigrate", "src\AppMigrate\AppMigrate.csproj", "{7C8B83AF-B34B-4B87-A369-E21BC41A0877}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{3A63707E-D96D-4D88-A6CD-8CA50F20355C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppMigrate.Tests", "tests\AppMigrate.Tests\AppMigrate.Tests.csproj", "{CBBF5020-86BD-4388-BD85-7ABF24509ADA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{7C8B83AF-B34B-4B87-A369-E21BC41A0877}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C8B83AF-B34B-4B87-A369-E21BC41A0877}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7C8B83AF-B34B-4B87-A369-E21BC41A0877}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBBF5020-86BD-4388-BD85-7ABF24509ADA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBBF5020-86BD-4388-BD85-7ABF24509ADA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBBF5020-86BD-4388-BD85-7ABF24509ADA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBBF5020-86BD-4388-BD85-7ABF24509ADA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7C8B83AF-B34B-4B87-A369-E21BC41A0877} = {46A7BCB1-EF55-41EB-837B-210FE6DB3C05}
+		{CBBF5020-86BD-4388-BD85-7ABF24509ADA} = {3A63707E-D96D-4D88-A6CD-8CA50F20355C}
 	EndGlobalSection
 EndGlobal

@@ -30,6 +30,9 @@ public sealed class ScanService
 
         Publish(items, gate, progress, "Starting inventory...", true, 0, false);
 
+        // TODO: more sources! Scoop and Chocolatey exports, VS Code extensions (`code --list-extensions`),
+        // global npm/pipx/dotnet tools, and WSL distros. For developers that's half of what makes
+        // a PC feel like theirs, and each one is basically another WrapSource call.
         var tasks = new List<Task<SourceBatch>>
         {
             WrapSource("Registry", _registry.ScanAsync(cancellationToken)),
@@ -73,6 +76,8 @@ public sealed class ScanService
         {
             int done = 0;
             Publish(items, gate, progress, $"Resolving {resolveTargets.Count} package IDs in parallel...", true, 0, false);
+            // TODO: name lookups are thrown away after every scan. Caching them on disk (keyed by
+            // name + publisher) would make a rescan almost instant.
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 8,

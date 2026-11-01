@@ -8,7 +8,7 @@ namespace AppMigrate.Services;
 
 public sealed class ManifestService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true,
@@ -21,14 +21,14 @@ public sealed class ManifestService
         await using FileStream stream = File.OpenRead(path);
         ManifestDocument? document = await JsonSerializer.DeserializeAsync<ManifestDocument>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
         if (document == null) throw new InvalidDataException("The file is not a valid app migration manifest.");
-        document.Apps ??= new List<AppRecord>();
+        document.LoadWarnings = ManifestSanitizer.Sanitize(document, ManifestTrust.LocalFile);
         return document;
     }
 
-    public async Task SaveAsync(string path, IEnumerable<AppItem> apps, CancellationToken cancellationToken = default)
+    public static ManifestDocument CreateDocument(IEnumerable<AppItem> apps)
     {
         List<AppItem> list = apps.ToList();
-        var document = new ManifestDocument
+        return new ManifestDocument
         {
             SchemaVersion = 1,
             GeneratedAt = DateTimeOffset.Now.ToString("O"),
@@ -42,6 +42,14 @@ public sealed class ManifestService
             },
             Apps = list.Select(AppRecord.FromItem).ToList()
         };
+    }
+
+    // TODO: also write a configuration.winget (WinGet Configuration / DSC YAML) next to apps.json.
+    // Then `winget configure apps.winget` or Dev Home could rebuild the PC without AppMigrate at
+    // all, which feels like the right kind of "no lock-in".
+    public async Task SaveAsync(string path, IEnumerable<AppItem> apps, CancellationToken cancellationToken = default)
+    {
+        ManifestDocument document = CreateDocument(apps);
 
         string? directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);

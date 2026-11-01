@@ -21,6 +21,8 @@ jobs:
         run: dotnet restore AppMigrate.sln
       - name: Build
         run: dotnet build AppMigrate.sln -c Release --no-restore
+      - name: Test
+        run: dotnet test AppMigrate.sln -c Release --no-build --logger "console;verbosity=normal"
       - name: Publish framework-dependent
         run: >
           dotnet publish src/AppMigrate/AppMigrate.csproj

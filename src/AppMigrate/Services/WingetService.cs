@@ -1,14 +1,27 @@
 using System.Collections.Concurrent;
+using System.IO;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using AppMigrate.Models;
 
 namespace AppMigrate.Services;
 
-public sealed record WingetRow(string Name, string Id, string Version, string Source, bool IdTruncated, bool NameTruncated, bool IsMsix, bool IsArp);
-public sealed record WingetInventory(IReadOnlyList<WingetRow> Rows, string? Warning);
+public sealed record WingetRow(string Name, string Id, string Version, string Source, bool IdTruncated, bool NameTruncated, bool IsMsix, bool IsArp, string IdPrefix = "");
+public sealed record ExportedPackage(string Id, string Version, string Source);
+public sealed record WingetInventory(IReadOnlyList<WingetRow> Rows, string? Warning, IReadOnlyList<ExportedPackage> Exported)
+{
+    public WingetInventory(IReadOnlyList<WingetRow> rows, string? warning)
+        : this(rows, warning, Array.Empty<ExportedPackage>()) { }
+}
 
 public sealed class WingetService
 {
+    // "Found <name> [<id>]" from `winget show`; the leading word is localized, the brackets are not.
+    private static readonly Regex FoundLine = new(@"(?m)^\S[^\r\n]*\[([^\]\s]+)\]\s*$", RegexOptions.Compiled);
+    private static readonly Regex TrailingVersionPart = new(@"^(.*\S\s+v?\d+(?:\.\d+)*)\.\d+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex TrailingVersion = new(@"^(.*?)\s+v?\d[\w.\-]*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex Parenthetical = new(@"\s*\([^)]*\)", RegexOptions.Compiled);
+
     private readonly ConcurrentDictionary<string, string?> _idCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string?> _storeIdCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -22,13 +35,54 @@ public sealed class WingetService
             cancellationToken).ConfigureAwait(false);
 
         IReadOnlyList<WingetRow> rows = ParseList(result.Output);
-        if (result.ExitCode != 0 && rows.Count == 0)
+        // Newer winget versions print full IDs when redirected. Only pay for an export when the
+        // table actually truncated something.
+        IReadOnlyList<ExportedPackage> exported = rows.Any(r => r.IdTruncated)
+            ? await GetExportedPackagesAsync(cancellationToken).ConfigureAwait(false)
+            : Array.Empty<ExportedPackage>();
+        rows = RepairTruncatedIds(rows, exported);
+        if (rows.Count == 0)
         {
+            // A working winget always lists at least App Installer, so an empty table means the
+            // command failed or its output could not be read. Say so instead of degrading silently.
             string warning = result.Output.Trim();
             if (warning.Length > 240) warning = warning[..237] + "...";
-            return new WingetInventory(Array.Empty<WingetRow>(), string.IsNullOrWhiteSpace(warning) ? "WinGet inventory failed." : warning);
+            if (result.ExitCode == 0 || string.IsNullOrWhiteSpace(warning))
+            {
+                warning = "WinGet inventory could not be read (exit " + result.ExitCode + ").";
+            }
+            return new WingetInventory(Array.Empty<WingetRow>(), warning, exported);
         }
-        return new WingetInventory(rows, null);
+        return new WingetInventory(rows, null, exported);
+    }
+
+    public async Task<IReadOnlyList<ExportedPackage>> GetExportedPackagesAsync(CancellationToken cancellationToken)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"appmigrate-export-{Guid.NewGuid():N}.json");
+        try
+        {
+            await ProcessRunner.RunAsync(
+                "winget.exe",
+                new[] { "export", "-o", path, "--include-versions", "--accept-source-agreements", "--disable-interactivity" },
+                null,
+                TimeSpan.FromMinutes(2),
+                cancellationToken).ConfigureAwait(false);
+            if (!File.Exists(path)) return Array.Empty<ExportedPackage>();
+            return ParseExport(await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Export only improves ID accuracy; the list output is still usable without it.
+            return Array.Empty<ExportedPackage>();
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
     }
 
     public async Task<string?> ResolveIdAsync(string name, CancellationToken cancellationToken)
@@ -46,15 +100,11 @@ public sealed class WingetService
                 TimeSpan.FromSeconds(30),
                 cancellationToken).ConfigureAwait(false);
 
-            Match match = Regex.Match(show.Output, @"(?m)^\s*Found\s+.+?\s+\[([^\]]+)\]\s*$");
-            if (match.Success)
+            string? id = ParseShowId(show.Output);
+            if (id != null)
             {
-                string id = match.Groups[1].Value.Trim();
-                if (id.Length > 0 && !id.StartsWith("MSIX\\", StringComparison.OrdinalIgnoreCase) && !id.StartsWith("ARP\\", StringComparison.OrdinalIgnoreCase))
-                {
-                    _idCache[cacheKey] = id;
-                    return id;
-                }
+                _idCache[cacheKey] = id;
+                return id;
             }
 
             string? searchId = await SearchIdAsync(candidate, cancellationToken).ConfigureAwait(false);
@@ -81,7 +131,7 @@ public sealed class WingetService
             TimeSpan.FromSeconds(30),
             cancellationToken).ConfigureAwait(false);
 
-        string? id = ParseSearchId(result.Output, name);
+        string? id = PickSearchId(result.Output, name, storeOnly: true);
         _storeIdCache[name] = id;
         return id;
     }
@@ -111,7 +161,8 @@ public sealed class WingetService
             }
             if (matchScope && (app.Scope == "user" || app.Scope == "machine")) args.Add("--scope");
             if (matchScope && (app.Scope == "user" || app.Scope == "machine")) args.Add(app.Scope);
-            if (pinVersion && !string.IsNullOrWhiteSpace(app.Version))
+            // winget lists ranges such as "> 270.4" or "Unknown"; only pin real version numbers.
+            if (pinVersion && app.Version.Length > 0 && char.IsDigit(app.Version[0]))
             {
                 args.Add("--version");
                 args.Add(app.Version);
@@ -123,7 +174,7 @@ public sealed class WingetService
         }
 
         if (force) args.Add("--force");
-        foreach (string extra in SplitArguments(app.WingetArgs)) args.Add(extra);
+        args.AddRange(CommandLine.Split(app.WingetArgs));
 
         return await ProcessRunner.RunAsync("winget.exe", args, onLine, TimeSpan.FromMinutes(30), cancellationToken).ConfigureAwait(false);
     }
@@ -137,117 +188,174 @@ public sealed class WingetService
             TimeSpan.FromSeconds(30),
             cancellationToken).ConfigureAwait(false);
 
-        string[] lines = result.Output.Replace("\r", "").Split('\n');
-        int headerIndex = Array.FindIndex(lines, l => Regex.IsMatch(l, @"^Name\s+Id\s+Version"));
-        if (headerIndex < 0) return null;
+        return PickSearchId(result.Output, candidate, storeOnly: false);
+    }
 
-        int idPos = lines[headerIndex].IndexOf("Id", StringComparison.Ordinal);
-        int versionPos = lines[headerIndex].IndexOf("Version", StringComparison.Ordinal);
-        if (idPos <= 0 || versionPos <= idPos) return null;
+    internal static string? ParseShowId(string output)
+    {
+        // Several matches print a table instead of a single "Found" line.
+        if (WingetTable.Parse(output) != null) return null;
+        Match match = FoundLine.Match(output);
+        if (!match.Success) return null;
+        string id = match.Groups[1].Value.Trim();
+        if (id.StartsWith("MSIX\\", StringComparison.OrdinalIgnoreCase) || id.StartsWith("ARP\\", StringComparison.OrdinalIgnoreCase)) return null;
+        return PackageIds.IsWingetId(id) || PackageIds.IsStoreId(id) ? id : null;
+    }
 
-        foreach (string line in lines.Skip(headerIndex + 1))
+    /// <summary>
+    /// Picks the search row for <paramref name="candidate"/>. An exact name (versions kept) wins;
+    /// a version-insensitive match is accepted only when it is the single such row, so that
+    /// "Python 3.12" never resolves to a different Python release.
+    /// </summary>
+    internal static string? PickSearchId(string output, string candidate, bool storeOnly)
+    {
+        // TODO: return how confident the match was (exact vs. loose) so the grid can flag
+        // guesses for a quick human check before anything gets installed.
+        WingetTable? table = WingetTable.Parse(output);
+        if (table == null || table.ColumnCount < 2) return null;
+
+        string strict = TextUtil.NormalizeStrict(candidate);
+        string loose = TextUtil.NormalizeLoose(candidate);
+        var looseMatches = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string[] cells in table.Rows)
         {
-            if (line.Length < versionPos || !line.Any(c => !char.IsWhiteSpace(c))) continue;
-            string name = line[..idPos].Trim();
-            string id = line.Substring(idPos, versionPos - idPos).Trim();
-            if (TextUtil.LooksTruncated(id) || id.Length == 0) continue;
-            if (TextUtil.NormalizeLoose(name) == TextUtil.NormalizeLoose(candidate))
+            string name = cells[0];
+            string id = cells[1];
+            if (id.Length == 0 || IsTruncated(id)) continue;
+            if (storeOnly)
             {
-                return id;
+                id = id.ToUpperInvariant();
+                if (!PackageIds.IsStoreId(id)) continue;
             }
+
+            if (strict.Length > 0 && TextUtil.NormalizeStrict(name) == strict) return id;
+            if (loose.Length > 0 && TextUtil.NormalizeLoose(name) == loose) looseMatches.Add(id);
         }
-        return null;
+        return looseMatches.Count == 1 ? looseMatches.First() : null;
     }
 
-    private static string? ParseSearchId(string output, string expectedName)
+    internal static IReadOnlyList<WingetRow> ParseList(string raw)
     {
-        string[] lines = output.Replace("\r", "").Split('\n');
-        int headerIndex = Array.FindIndex(lines, l => Regex.IsMatch(l, @"^Name\s+Id\s+Version"));
-        if (headerIndex < 0) return null;
-        int idPos = lines[headerIndex].IndexOf("Id", StringComparison.Ordinal);
-        int versionPos = lines[headerIndex].IndexOf("Version", StringComparison.Ordinal);
-        if (idPos <= 0 || versionPos <= idPos) return null;
+        WingetTable? table = WingetTable.Parse(raw);
+        if (table == null || table.ColumnCount < 3) return Array.Empty<WingetRow>();
 
-        foreach (string line in lines.Skip(headerIndex + 1))
-        {
-            if (line.Length < versionPos || !line.Any(c => !char.IsWhiteSpace(c))) continue;
-            string name = line[..idPos].Trim();
-            string id = line.Substring(idPos, versionPos - idPos).Trim().ToUpperInvariant();
-            if (id.Length != 12 || !id.All(c => char.IsAsciiLetterOrDigit(c))) continue;
-            if (TextUtil.NormalizeLoose(name) == TextUtil.NormalizeLoose(expectedName)) return id;
-        }
-        return null;
-    }
-
-    private static IReadOnlyList<WingetRow> ParseList(string raw)
-    {
-        raw = Regex.Replace(raw, @"\x1b\[[0-9;]*[A-Za-z]", "");
-        string[] lines = raw.Replace("\r", "").Split('\n');
-        int headerIndex = Array.FindIndex(lines, line => Regex.IsMatch(line, @"^Name\s+Id\s+Version"));
-        if (headerIndex < 0) return Array.Empty<WingetRow>();
-
-        string header = lines[headerIndex];
-        int idPos = header.IndexOf("Id", StringComparison.Ordinal);
-        int versionPos = header.IndexOf("Version", StringComparison.Ordinal);
-        int availablePos = header.IndexOf("Available", StringComparison.Ordinal);
-        int sourcePos = header.IndexOf("Source", StringComparison.Ordinal);
-        if (availablePos < 0) availablePos = sourcePos;
-        if (sourcePos < 0) sourcePos = header.Length;
-        if (idPos <= 0 || versionPos <= idPos) return Array.Empty<WingetRow>();
+        // Columns are Name, Id, Version, then optionally Available, then Source.
+        int sourceColumn = table.ColumnCount >= 4 ? table.ColumnCount - 1 : -1;
 
         var rows = new List<WingetRow>();
-        foreach (string line in lines.Skip(headerIndex + 1))
+        foreach (string[] cells in table.Rows)
         {
-            if (line.Length < versionPos || !line.Any(c => !char.IsWhiteSpace(c))) continue;
-            if (line.Length < idPos) continue;
-            if (line.TrimStart().StartsWith("-", StringComparison.Ordinal)) continue;
-
-            string name = line[..idPos].Trim();
-            string rawId = line.Substring(idPos, versionPos - idPos);
-            string rawVersion = availablePos > versionPos
-                ? line.Substring(versionPos, availablePos - versionPos)
-                : line[versionPos..];
-            string source = sourcePos < line.Length ? line[sourcePos..].Trim() : "";
-            bool isMsix = rawId.TrimStart().StartsWith("MSIX\\", StringComparison.OrdinalIgnoreCase);
-            bool isArp = rawId.TrimStart().StartsWith("ARP\\", StringComparison.OrdinalIgnoreCase);
-
-            bool idTruncated = TextUtil.LooksTruncated(rawId) || rawId.TrimEnd().Length >= versionPos - idPos - 1;
-            bool nameTruncated = TextUtil.LooksTruncated(name) || name.Length >= idPos - 1;
-            string id = TextUtil.CleanAscii(rawId);
-            string version = TextUtil.CleanAscii(rawVersion);
-
+            string name = cells[0];
+            string rawId = cells[1];
             if (name.Length == 0) continue;
-            if (id.Length > 0 && !isMsix && !isArp && !Regex.IsMatch(id, @"^[A-Za-z0-9._\-]+$"))
-            {
-                continue;
-            }
 
-            rows.Add(new WingetRow(name, idTruncated ? "" : id, version, source, idTruncated, nameTruncated, isMsix, isArp));
+            bool isMsix = rawId.StartsWith("MSIX\\", StringComparison.OrdinalIgnoreCase);
+            bool isArp = rawId.StartsWith("ARP\\", StringComparison.OrdinalIgnoreCase);
+            bool idTruncated = IsTruncated(rawId);
+            bool nameTruncated = name.EndsWith('…');
+            string id = TextUtil.CleanAscii(rawId);
+            string version = TextUtil.CleanAscii(cells[2]);
+            string source = sourceColumn >= 0 ? cells[sourceColumn] : "";
+            if (source.Length > 0 && char.IsDigit(source[0])) source = "";
+
+            if (!idTruncated && id.Length > 0 && !isMsix && !isArp && id.Any(char.IsWhiteSpace)) continue;
+
+            string prefix = idTruncated ? TextUtil.CleanAscii(rawId.Replace("…", "")) : "";
+            rows.Add(new WingetRow(name, idTruncated ? "" : id, version, source, idTruncated, nameTruncated, isMsix, isArp, prefix));
         }
         return rows;
     }
 
-    private static IEnumerable<string> Candidates(string name)
+    internal static IReadOnlyList<ExportedPackage> ParseExport(string json)
+    {
+        var packages = new List<ExportedPackage>();
+        using JsonDocument document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("Sources", out JsonElement sources) || sources.ValueKind != JsonValueKind.Array)
+        {
+            return packages;
+        }
+
+        foreach (JsonElement source in sources.EnumerateArray())
+        {
+            string sourceName = source.TryGetProperty("SourceDetails", out JsonElement details) &&
+                                details.TryGetProperty("Name", out JsonElement nameElement)
+                ? nameElement.GetString() ?? ""
+                : "";
+            if (!source.TryGetProperty("Packages", out JsonElement list) || list.ValueKind != JsonValueKind.Array) continue;
+
+            foreach (JsonElement package in list.EnumerateArray())
+            {
+                string id = package.TryGetProperty("PackageIdentifier", out JsonElement idElement) ? idElement.GetString() ?? "" : "";
+                string version = package.TryGetProperty("Version", out JsonElement versionElement) ? versionElement.GetString() ?? "" : "";
+                if (id.Length > 0) packages.Add(new ExportedPackage(id, version, sourceName));
+            }
+        }
+        return packages;
+    }
+
+    /// <summary>Completes truncated list IDs from the untruncated `winget export` set when the prefix is unambiguous.</summary>
+    internal static IReadOnlyList<WingetRow> RepairTruncatedIds(IReadOnlyList<WingetRow> rows, IReadOnlyList<ExportedPackage> exported)
+    {
+        if (exported.Count == 0 || !rows.Any(r => r.IdTruncated)) return rows;
+
+        var claimed = new HashSet<string>(rows.Where(r => r.Id.Length > 0).Select(r => r.Id), StringComparer.OrdinalIgnoreCase);
+        var available = exported.Where(p => !claimed.Contains(p.Id)).ToList();
+        var repaired = new List<WingetRow>(rows.Count);
+        foreach (WingetRow row in rows)
+        {
+            if (!row.IdTruncated || row.IsMsix || row.IsArp || row.IdPrefix.Length < 3)
+            {
+                repaired.Add(row);
+                continue;
+            }
+
+            List<ExportedPackage> matches = available
+                .Where(p => p.Id.StartsWith(row.IdPrefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (matches.Count != 1)
+            {
+                repaired.Add(row);
+                continue;
+            }
+
+            ExportedPackage match = matches[0];
+            available.Remove(match);
+            repaired.Add(row with
+            {
+                Id = match.Id,
+                IdTruncated = false,
+                IdPrefix = "",
+                Source = row.Source.Length > 0 ? row.Source : match.Source
+            });
+        }
+        return repaired;
+    }
+
+    /// <summary>Name variants to try, most specific first: "App 3.12.1 (x64)" → "App 3.12.1" → "App 3.12" → "App".</summary>
+    internal static IEnumerable<string> Candidates(string name)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (seen.Add(name)) yield return name;
-
-        string withoutVersion = Regex.Replace(name, @"\s+\d[\w.\-]*\s*$", "");
-        if (withoutVersion != name && seen.Add(withoutVersion)) yield return withoutVersion;
-
-        string withoutParens = Regex.Replace(name, @"\s*\([^)]*\)", "");
-        if (withoutParens != name && seen.Add(withoutParens)) yield return withoutParens;
-
-        string withoutBoth = Regex.Replace(withoutParens, @"\s+\d[\w.\-]*\s*$", "");
-        if (withoutBoth != withoutParens && seen.Add(withoutBoth)) yield return withoutBoth;
-    }
-
-    private static IEnumerable<string> SplitArguments(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) yield break;
-        foreach (string part in value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        var ordered = new List<string>();
+        void Add(string value)
         {
-            yield return part;
+            value = value.Trim();
+            if (value.Length > 0 && seen.Add(value)) ordered.Add(value);
         }
+
+        Add(name);
+        string current = Parenthetical.Replace(name, "").Trim();
+        Add(current);
+
+        Match part = TrailingVersionPart.Match(current);
+        if (part.Success) Add(part.Groups[1].Value);
+        Match whole = TrailingVersion.Match(current);
+        if (whole.Success) Add(whole.Groups[1].Value);
+
+        // Each candidate costs two winget processes, so keep the list short.
+        return ordered.Take(4);
     }
+
+    private static bool IsTruncated(string id)
+        => id.Contains('…') || TextUtil.LooksTruncated(id);
 }
