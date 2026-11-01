@@ -33,6 +33,9 @@ internal static class WingetConfigurationWriter
                              && PackageIds.IsStoreId(app.Id);
             if (!fromWinget && !fromStore) continue;
 
+            // The schema caps resource ids at 128 characters.
+            if (app.Id.Length > 128) continue;
+
             // Two rows for the same package would make winget configure do the work twice.
             if (!seen.Add(app.Id)) continue;
 
@@ -54,5 +57,11 @@ internal static class WingetConfigurationWriter
     private static string Quote(string value) => "'" + value.Replace("'", "''") + "'";
 
     private static string Description(string? name)
-        => new((name ?? "").Select(c => char.IsControl(c) ? ' ' : c).ToArray());
+    {
+        string flattened = new((name ?? "").Select(c => char.IsControl(c) ? ' ' : c).ToArray());
+
+        // The schema caps directives.description at 512 characters, and a registry name can be any length.
+        // Shorten first, so the quote-doubling below can never leave half of an escaped pair behind.
+        return TextUtil.Shorten(flattened, 512);
+    }
 }
