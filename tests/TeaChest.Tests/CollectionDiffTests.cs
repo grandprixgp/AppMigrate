@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Reflection;
+using TeaChest.Models;
 using TeaChest.ViewModels;
 
 namespace TeaChest.Tests;
@@ -309,6 +311,65 @@ public sealed class CollectionDiffTests
             Assert.DoesNotContain(NotifyCollectionChangedAction.Reset, result.Actions);
         }
     }
+
+    [Fact]
+    public void HasSameContentAcceptsIdenticalClones()
+    {
+        AppItem item = SampleApp();
+
+        Assert.True(MainViewModel.HasSameContent(item, item.Clone()));
+    }
+
+    [Fact]
+    public void HasSameContentComparesEveryWritableProperty()
+    {
+        PropertyInfo[] writable = WritableProperties();
+        Assert.NotEmpty(writable);
+
+        foreach (PropertyInfo property in writable)
+        {
+            AppItem left = SampleApp();
+            AppItem right = left.Clone();
+            property.SetValue(right, DifferentValue(property, property.GetValue(left)!));
+
+            Assert.False(
+                MainViewModel.HasSameContent(left, right),
+                $"{property.Name} is writable but HasSameContent ignores it.");
+        }
+    }
+
+    [Fact]
+    public void LaterSnapshotWithOnlyAHiddenFieldChangedUpdatesTheRow()
+    {
+        var first = new AppItem { Name = "Example", UninstallString = "old" };
+        var target = new ObservableCollection<AppItem>();
+        CollectionDiff.Apply(target, new[] { first.Clone() }, MainViewModel.AppKey, MainViewModel.HasSameContent);
+
+        AppItem second = first.Clone();
+        second.UninstallString = "new";
+        CollectionDiff.Apply(target, new[] { second }, MainViewModel.AppKey, MainViewModel.HasSameContent);
+
+        Assert.Equal("new", Assert.Single(target).UninstallString);
+    }
+
+    private static PropertyInfo[] WritableProperties()
+        => typeof(AppItem)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(property => property.SetMethod is { IsPublic: true })
+            .ToArray();
+
+    private static AppItem SampleApp()
+    {
+        var item = new AppItem();
+        foreach (PropertyInfo property in WritableProperties())
+        {
+            property.SetValue(item, property.PropertyType == typeof(bool) ? true : "base-" + property.Name);
+        }
+        return item;
+    }
+
+    private static object DifferentValue(PropertyInfo property, object current)
+        => property.PropertyType == typeof(bool) ? !(bool)current : current + "-changed";
 
     private static List<string> Pick(Random random, string[] pool)
         => pool.OrderBy(_ => random.Next()).Take(random.Next(0, pool.Length + 1)).ToList();
