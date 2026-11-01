@@ -214,6 +214,7 @@ Things we'd love to get to. They're also sprinkled through the code as `TODO`s i
 - **A "time machine":** quietly keep a dated manifest in OneDrive, because most migrations happen *after* a PC dies.
 - **A headless mode** in the main exe, so the PowerShell scripts can retire.
 - **A v2 tidy-up of the UI:** a proper details panel, live per-app status during installs, and a **Retry failed** button.
+- **A Linux version,** the big one: apt, dnf, pacman, Flatpak and friends, on a shared cross-platform core.
 
 ## Privacy
 
