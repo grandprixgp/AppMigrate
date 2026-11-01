@@ -13,7 +13,7 @@ public sealed class SelectionOptions
 public static class AppClassifier
 {
     private static readonly Regex RuntimePattern = new(
-        @"Visual C\+\+|\.NET|App Runtime|WinAppRuntime|WindowsAppRuntime|VCLibs|UI\.Xaml|Native (Framework|Runtime)|WebView2|DirectX|Windows SDK|Winget Source|Windows Package Manager|Windows Subsystem for Linux|\bWSL\b|App Installer",
+        @"Visual C\+\+|ASP\.NET|(?<!\w)\.NET|App Runtime|WinAppRuntime|WindowsAppRuntime|VCLibs|UI\.Xaml|Native (Framework|Runtime)|WebView2|DirectX|Windows SDK|Winget Source|Windows Package Manager|Windows Subsystem for Linux|\bWSL\b|App Installer",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex DriverPattern = new(
@@ -41,14 +41,14 @@ public static class AppClassifier
     {
         if (RuntimePattern.IsMatch(name)) return "Runtime";
         if (DriverPattern.IsMatch(name)) return "Driver";
-        if (Regex.IsMatch(name, "Chrome|Firefox|Microsoft Edge|Brave|Opera|Vivaldi|Arc Browser|ego", RegexOptions.IgnoreCase)) return "Browser";
+        if (Regex.IsMatch(name, "Chrome|Firefox|Microsoft Edge|Brave|\\bOpera\\b|Vivaldi|Arc Browser|\\bego\\b", RegexOptions.IgnoreCase)) return "Browser";
         if (Regex.IsMatch(name, "Parsec|RustDesk|TeamViewer|AnyDesk|Remote Desktop|VNC", RegexOptions.IgnoreCase)) return "Remote access";
-        if (Regex.IsMatch(name, "Antigravity|Command Code|OpenCode|Visual Studio|VS Code|GitHub|Git\\b|Python|Node\\.js|Docker|Postman|Terminal|PowerShell", RegexOptions.IgnoreCase)) return "Development";
+        if (Regex.IsMatch(name, "Antigravity|Command Code|OpenCode|Visual Studio|VS Code|GitHub|TortoiseGit|\\bGit|Python|Node\\.js|Docker|Postman|Terminal|PowerShell", RegexOptions.IgnoreCase)) return "Development";
         if (Regex.IsMatch(name, "ChatGPT|Claude|Gemini|Copilot|Codex|Ollama|LM Studio", RegexOptions.IgnoreCase)) return "AI tools";
         if (Regex.IsMatch(name, "Teams|Slack|Discord|Zoom|WhatsApp|Telegram|Signal|Outlook|Thunderbird|Mail", RegexOptions.IgnoreCase)) return "Communication";
-        if (Regex.IsMatch(name, "Spotify|VLC|iTunes|Media Player|OBS|Audacity|Clipchamp|Photos|Image|Video|Music", RegexOptions.IgnoreCase)) return "Media";
-        if (Regex.IsMatch(name, "Steam|Epic Games|GOG|Xbox|Battle\\.net|Game", RegexOptions.IgnoreCase)) return "Gaming";
-        if (Regex.IsMatch(name, "Office|Word|Excel|PowerPoint|Notion|Obsidian|Todo|Sticky|PDF|Acrobat|OneNote", RegexOptions.IgnoreCase)) return "Productivity";
+        if (Regex.IsMatch(name, "Spotify|VLC|iTunes|Media Player|OBS\\b|Audacity|Clipchamp|Photos|Image|Video|Music", RegexOptions.IgnoreCase)) return "Media";
+        if (Regex.IsMatch(name, "Steam\\b|Epic Games|GOG|Xbox|Battle\\.net|Game", RegexOptions.IgnoreCase)) return "Gaming";
+        if (Regex.IsMatch(name, "Office|\\bWord\\b|\\bExcel\\b|PowerPoint|Notion|Obsidian|Todo|Sticky|PDF|Acrobat|OneNote", RegexOptions.IgnoreCase)) return "Productivity";
         if (Regex.IsMatch(name, "Security|Defender|1Password|Bitwarden|Malware|VPN|Password", RegexOptions.IgnoreCase)) return "Security";
         if (string.Equals(installType, "msix", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(installType, "msstore", StringComparison.OrdinalIgnoreCase)) return "Store app";
