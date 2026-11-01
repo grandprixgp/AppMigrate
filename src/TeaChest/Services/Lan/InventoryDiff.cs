@@ -54,32 +54,58 @@ public static class InventoryDiff
     /// Compares two saved manifests: apps the before one had and the after one lacks, apps both
     /// have, and apps only the after one has. Both documents must already have been through
     /// <see cref="ManifestSanitizer"/>; this trusts their IDs and does not sanitise again.
+    /// Apps match by ID when both sides have one, and by strict name when either side does not,
+    /// because a WinGet outage leaves an app with no ID on one side only.
     /// </summary>
     public static InventoryDiffResult CompareManifests(ManifestDocument before, ManifestDocument after)
     {
         var result = new InventoryDiffResult();
         InstalledIndex afterIndex = FromManifest(after);
         InstalledIndex beforeIndex = FromManifest(before);
+        HashSet<string> unidentifiedAfter = UnidentifiedNames(after);
+        HashSet<string> unidentifiedBefore = UnidentifiedNames(before);
 
         foreach (AppRecord record in before.Apps)
         {
             AppItem app = record.ToItem();
-            if (afterIndex.Contains(app)) result.AlreadyHere.Add(app);
+            if (IsPresent(app, afterIndex, unidentifiedAfter)) result.AlreadyHere.Add(app);
             else result.MissingHere.Add(app);
         }
 
         foreach (AppRecord record in after.Apps)
         {
             AppItem app = record.ToItem();
-            if (!beforeIndex.Contains(app)) result.OnlyHere.Add(app);
+            if (!IsPresent(app, beforeIndex, unidentifiedBefore)) result.OnlyHere.Add(app);
         }
 
         return result;
     }
 
+    private static bool IsPresent(AppItem app, InstalledIndex index, HashSet<string> unidentifiedNames)
+    {
+        if (index.Contains(app)) return true;
+        string name = TextUtil.NormalizeStrict(app.Name);
+        return name.Length > 0 && unidentifiedNames.Contains(name);
+    }
+
+    /// <summary>Strict names of rows with no ID, so a one-sided WinGet outage still matches by name.</summary>
+    private static HashSet<string> UnidentifiedNames(ManifestDocument document)
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (AppRecord app in document.Apps)
+        {
+            if (!string.IsNullOrWhiteSpace(app.Id)) continue;
+            string name = TextUtil.NormalizeStrict(app.Name);
+            if (name.Length > 0) names.Add(name);
+        }
+
+        return names;
+    }
+
     /// <summary>
-    /// Indexes a manifest as if it were this PC's inventory. A manifest's IDs come from the PC it
-    /// was scanned on, so they can be trusted on their own.
+    /// Indexes a manifest as if it were this PC's inventory. The manifest was scanned on a real PC,
+    /// so its IDs can be trusted on their own; rows with no ID are matched by
+    /// <see cref="CompareManifests"/> against the other side's names.
     /// </summary>
     internal static InstalledIndex FromManifest(ManifestDocument document)
     {
