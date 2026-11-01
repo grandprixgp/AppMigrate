@@ -316,3 +316,20 @@ public class InventoryDiffTests
         Assert.Equal("dotPDN.PaintDotNet", Assert.Single(diff.OnlyHere).Id);
     }
 }
+
+public class WireCompatibilityTests
+{
+    // These values are what AppMigrate 1.2 sends. If one changes, 1.2 and TeaChest stop seeing each other.
+    [Fact]
+    public void DiscoveryMagicStillMatchesAppMigrate()
+        => Assert.Equal("AppMigrate.Nearby", LanProtocol.DiscoveryMagic);
+
+    [Fact]
+    public void PairingStillMatchesAppMigrate()
+    {
+        byte[] zero = new byte[32];
+
+        Assert.Equal("D97C8AD4444273FD4D84BC1D8D8AD35925E98702674BE5D4B2A285ADD1AA9A4D", Convert.ToHexString(Pairing.Commit(zero)));
+        Assert.Equal("370 454", Pairing.Code(zero, zero, zero, zero));
+    }
+}

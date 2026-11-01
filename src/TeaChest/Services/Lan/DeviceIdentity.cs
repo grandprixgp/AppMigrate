@@ -25,7 +25,7 @@ public sealed class DeviceIdentity : IDisposable
     public string Name { get; }
 
     public static string DefaultDirectory
-        => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TeaChest");
+        => AppPaths.DataDirectory;
 
     public static DeviceIdentity LoadOrCreate(string? directory = null, string? name = null)
     {

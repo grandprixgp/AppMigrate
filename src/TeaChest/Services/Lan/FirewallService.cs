@@ -12,6 +12,7 @@ namespace TeaChest.Services.Lan;
 public static class FirewallService
 {
     public const string RuleName = "TeaChest Nearby";
+    private const string LegacyRuleName = "AppMigrate Nearby";
     public const string ConfigureArgument = "--configure-firewall";
 
     public static string ExePath => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "TeaChest.exe");
@@ -57,6 +58,8 @@ public static class FirewallService
     public static int ConfigureElevated()
     {
         RunNetsh("advfirewall", "firewall", "delete", "rule", $"name={RuleName}");
+        // Leftover from an AppMigrate install. It points at the old exe, so nothing needs it now.
+        RunNetsh("advfirewall", "firewall", "delete", "rule", $"name={LegacyRuleName}");
         int tcp = RunNetsh(AddRule("TCP"));
         int udp = RunNetsh(AddRule("UDP"));
         return tcp != 0 ? tcp : udp;

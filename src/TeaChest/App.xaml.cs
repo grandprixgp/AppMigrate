@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using TeaChest.Services;
 using TeaChest.Services.Lan;
 
 namespace TeaChest;
@@ -20,6 +21,7 @@ public partial class App : Application
         // TODO: a proper headless mode right here - `TeaChest.exe scan --out apps.json` and
         // `TeaChest.exe install apps.json --yes` - so the cli/ PowerShell scripts can retire and
         // the same exe works in unattended setups (autounattend, Intune, a USB stick).
+        AppPaths.MoveLegacyData();
         base.OnStartup(e);
         var window = new MainWindow();
         MainWindow = window;
