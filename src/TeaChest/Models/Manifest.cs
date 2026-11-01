@@ -142,8 +142,12 @@ public sealed class PlanItem : INotifyPropertyChanged
             if (_status == value) return;
             _status = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(StatusLabel));
         }
     }
+
+    /// <summary>What the Status column shows. Status itself stays the raw result the triggers match on.</summary>
+    public string StatusLabel => Status == "RebootRequired" ? "Restart needed" : Status;
 
     public string StatusDetail
     {

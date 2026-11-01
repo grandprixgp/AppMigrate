@@ -87,6 +87,18 @@ public sealed class RetryPlanTests : IDisposable
     }
 
     [Fact]
+    public void RestartNeededReadsLikeWordsButTheStatusStaysRaw()
+    {
+        var item = Row("Firefox", "RebootRequired");
+
+        Assert.Equal("Restart needed", item.StatusLabel);
+        Assert.Equal("RebootRequired", item.Status);
+
+        item.Status = "Installed";
+        Assert.Equal("Installed", item.StatusLabel);
+    }
+
+    [Fact]
     public void NothingFailedMeansAnEmptyPlan()
     {
         InstallPlan plan = MainViewModel.BuildRetryPlan(new[]

@@ -478,7 +478,7 @@
                                         <DataGridTemplateColumn Header="Status" Width="130" SortMemberPath="Status">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding Status}"
+                                                    <TextBlock Text="{Binding StatusLabel}"
                                                                FontSize="11.5"
                                                                FontWeight="SemiBold"
                                                                TextTrimming="CharacterEllipsis"
