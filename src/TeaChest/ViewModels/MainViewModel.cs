@@ -64,7 +64,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _manualCount;
     private int _storeCount;
     private InstallReport? _lastReport;
-    private IReadOnlyList<PlanItem> _failedItems = Array.Empty<PlanItem>();
     private string _origin = "";
 
     public MainViewModel()
@@ -276,12 +275,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetField(ref _lastReport, value);
     }
 
-    /// <summary>The rows that failed in the last run, ready for a retry. Empty before one.</summary>
-    public IReadOnlyList<PlanItem> FailedItems
-    {
-        get => _failedItems;
-        private set => SetField(ref _failedItems, value);
-    }
+    /// <summary>The failed rows in the current plan, ready for a retry. Empty before a run.</summary>
+    public IReadOnlyList<PlanItem> FailedItems => SelectFailed(PlanItems);
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<AppErrorEventArgs>? Error;
@@ -545,7 +540,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         finally
         {
-            FailedItems = SelectFailed(PlanItems);
+            // Statuses changed outside NotifyPlanChanged, so the retry list needs its own nudge.
+            OnPropertyChanged(nameof(FailedItems));
             IsBusy = false;
             IsProgressIndeterminate = false;
             _cts?.Dispose();
@@ -715,6 +711,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(HasPlan));
         OnPropertyChanged(nameof(InstallActionCount));
+        OnPropertyChanged(nameof(FailedItems));
         OnPropertyChanged(nameof(CanInstall));
         CommandManager.InvalidateRequerySuggested();
     }
