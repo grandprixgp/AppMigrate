@@ -1,6 +1,5 @@
 using TeaChest.Models;
 using Microsoft.Win32;
-using System.Text.RegularExpressions;
 
 namespace TeaChest.Services;
 
@@ -11,16 +10,18 @@ public sealed class RegistryInventoryService
         return Task.Run<IReadOnlyList<AppItem>>(() =>
         {
             var results = new List<AppItem>();
-            var tasks = new[]
+            Task<List<AppItem>>[] tasks =
             {
-                Task.Run(() => ScanHive(RegistryHive.LocalMachine, RegistryView.Registry64, "machine", cancellationToken), cancellationToken),
-                Task.Run(() => ScanHive(RegistryHive.LocalMachine, RegistryView.Registry32, "machine", cancellationToken), cancellationToken),
-                Task.Run(() => ScanHive(RegistryHive.CurrentUser, RegistryView.Default, "user", cancellationToken), cancellationToken)
+                Task.Run(() => ScanHive(RegistryHive.LocalMachine, RegistryView.Registry64, "machine", cancellationToken).ToList(), cancellationToken),
+                Task.Run(() => ScanHive(RegistryHive.LocalMachine, RegistryView.Registry32, "machine", cancellationToken).ToList(), cancellationToken),
+                Task.Run(() => ScanHive(RegistryHive.CurrentUser, RegistryView.Default, "user", cancellationToken).ToList(), cancellationToken)
             };
 
             Task.WaitAll(tasks, cancellationToken);
             foreach (var task in tasks) results.AddRange(task.Result);
-            return results;
+
+            // The parent app can live in another hive, so filter once everything is in.
+            return RegistryNoiseFilter.Apply(results);
         }, cancellationToken);
     }
 
@@ -48,10 +49,6 @@ public sealed class RegistryInventoryService
                 displayName.StartsWith("Update for ", StringComparison.OrdinalIgnoreCase) ||
                 displayName.StartsWith("Security Update for ", StringComparison.OrdinalIgnoreCase) ||
                 displayName.StartsWith("Hotfix for ", StringComparison.OrdinalIgnoreCase)) continue;
-            // TODO: this throws out real apps too - "Dell Command | Update" is something people
-            // actually want back. Probably better to only skip these when there's a parent app
-            // from the same publisher in the list.
-            if (Regex.IsMatch(displayName, @"\b(Update|Updater|Helper|Telemetry)\b", RegexOptions.IgnoreCase)) continue;
 
             string uninstallString = key.GetValue("UninstallString") as string ?? "";
             string quietUninstallString = key.GetValue("QuietUninstallString") as string ?? "";
