@@ -607,13 +607,36 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="2"
-                            Style="{StaticResource SoftCard}"
-                            Margin="0,0,0,14"
-                            Padding="14,10"
-                            Visibility="{Binding HasShareStatus, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="{Binding ShareStatus}" Style="{StaticResource Subtle}" TextWrapping="Wrap" />
-                    </Border>
+                    <StackPanel Grid.Row="2">
+                        <Border Style="{StaticResource SoftCard}"
+                                Background="{DynamicResource WarningSoft}"
+                                Margin="0,0,0,14"
+                                Padding="14,10"
+                                Visibility="{Binding HasNetworkWarning, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding NetworkWarning}"
+                                           Foreground="{DynamicResource Warning}"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,16,0" />
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Content="Open network settings"
+                                        VerticalAlignment="Center"
+                                        Click="OpenNetworkSettings_Click" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SoftCard}"
+                                Margin="0,0,0,14"
+                                Padding="14,10"
+                                Visibility="{Binding HasShareStatus, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding ShareStatus}" Style="{StaticResource Subtle}" TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
 
                     <Grid Grid.Row="3">
                         <Grid.ColumnDefinitions>
