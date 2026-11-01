@@ -19,6 +19,7 @@ $assetDir = Join-Path $root 'src\TeaChest\Assets'
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 $pngPath = Join-Path $assetDir 'TeaChest.png'
 $icoPath = Join-Path $assetDir 'TeaChest.ico'
+$docsPngPath = Join-Path $root 'docs/icon.png'
 
 function New-RoundedPath {
     param([float]$X, [float]$Y, [float]$Width, [float]$Height, [float]$Radius)
@@ -52,33 +53,43 @@ function New-IconBitmap {
     )
     $g.FillPath($tileBrush, $tilePath)
 
-    # Two app tiles.
-    $leftPath = New-RoundedPath 132 430 350 350 66
-    $leftBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 243, 251, 255))
-    $g.FillPath($leftBrush, $leftPath)
+    # A wooden moving chest: lid, body, and the dark metal corners that keep it readable when small.
+    $wood = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
+        (New-Object System.Drawing.Point 0, 230),
+        (New-Object System.Drawing.Point 0, 830),
+        ([System.Drawing.Color]::FromArgb(255, 234, 180, 106)),
+        ([System.Drawing.Color]::FromArgb(255, 196, 128, 62))
+    )
+    $metal = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 74, 44, 22))
 
-    $rightPath = New-RoundedPath 542 430 350 350 66
-    $rightBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 101, 230, 242))
-    $g.FillPath($rightBrush, $rightPath)
+    $bodyPath = New-RoundedPath 164 400 696 430 44
+    $g.FillPath($wood, $bodyPath)
+    $lidPath = New-RoundedPath 132 212 760 236 62
+    $g.FillPath($wood, $lidPath)
 
-    # Transfer arrow above the tiles.
-    $arrowPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 248, 253, 255)), 64
-    $arrowPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $arrowPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $g.DrawLine($arrowPen, 190, 254, 764, 254)
-    $head = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $head.AddPolygon(@(
-        (New-Object System.Drawing.Point 742, 142),
-        (New-Object System.Drawing.Point 902, 254),
-        (New-Object System.Drawing.Point 742, 366)
-    ))
-    $arrowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 248, 253, 255))
-    $g.FillPath($arrowBrush, $head)
+    $g.FillRectangle($metal, 132, 408, 760, 44)
+    $g.FillRectangle($metal, 214, 212, 58, 196)
+    $g.FillRectangle($metal, 752, 212, 58, 196)
+    $g.FillRectangle($metal, 214, 452, 58, 378)
+    $g.FillRectangle($metal, 752, 452, 58, 378)
+
+    # The stencilled teacup on the front, with its saucer.
+    $cup = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $cup.AddLine(366, 512, 610, 512)
+    $cup.AddBezier(610, 512, 610, 628, 576, 704, 488, 704)
+    $cup.AddBezier(488, 704, 400, 704, 366, 628, 366, 512)
+    $cup.CloseFigure()
+    $g.FillPath($metal, $cup)
+
+    $stencil = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 74, 44, 22)), 34
+    $stencil.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $stencil.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawArc($stencil, 566, 530, 118, 104, -80, 215)
+    $g.DrawLine($stencil, 352, 752, 624, 752)
 
     $g.Dispose()
-    $tilePath.Dispose(); $tileBrush.Dispose(); $leftPath.Dispose(); $leftBrush.Dispose()
-    $rightPath.Dispose(); $rightBrush.Dispose()
-    $arrowPen.Dispose(); $head.Dispose(); $arrowBrush.Dispose()
+    $tilePath.Dispose(); $tileBrush.Dispose(); $wood.Dispose(); $metal.Dispose()
+    $bodyPath.Dispose(); $lidPath.Dispose(); $cup.Dispose(); $stencil.Dispose()
     return $bmp
 }
 
@@ -135,8 +146,10 @@ function Write-Ico {
 
 $master = New-IconBitmap
 $master.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+$master.Save($docsPngPath, [System.Drawing.Imaging.ImageFormat]::Png)
 Write-Ico -Source $master -Path $icoPath -Sizes @(16, 20, 24, 32, 40, 48, 64, 96, 128, 256)
 $master.Dispose()
 
 Write-Host "Wrote $pngPath"
 Write-Host "Wrote $icoPath"
+Write-Host "Wrote $docsPngPath"
