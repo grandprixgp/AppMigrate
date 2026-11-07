@@ -20,6 +20,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _viewModel = new MainViewModel();
         _viewModel.Error += ViewModel_Error;
+        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         DataContext = _viewModel;
 
         _nearby = new NearbyViewModel(_viewModel, Dispatcher);
@@ -258,14 +259,19 @@ public partial class MainWindow : Window
         MessageBox.Show(this, e.Message, e.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
-    // TODO: a MessageBox is a pretty sad details view. A side panel with the ID, where it was
-    // matched from, and an "open in Store / winget.run" link would be much nicer.
     private void AppsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (AppsGrid.SelectedItem is not AppItem app) return;
-        string details = $"Name: {app.Name}\nID: {app.Id}\nType: {app.InstallType}\nVersion: {app.Version}\n" +
-                         $"Category: {app.Category}\nPublisher: {app.Publisher}\nScope: {app.Scope}\n\n{app.Notes}";
-        MessageBox.Show(this, details, app.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+        if (AppsGrid.SelectedItem is AppItem) _viewModel.IsDetailsOpen = true;
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.IsDetailsOpen)) return;
+        // The panel shows these three, and the grid needs their width back to fit beside it at 1120.
+        Visibility columns = _viewModel.IsDetailsOpen ? Visibility.Collapsed : Visibility.Visible;
+        AppsCategoryColumn.Visibility = columns;
+        AppsIdColumn.Visibility = columns;
+        AppsNotesColumn.Visibility = columns;
     }
 
     private void PlanGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
