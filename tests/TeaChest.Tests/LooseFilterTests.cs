@@ -1,4 +1,5 @@
 using TeaChest.Models;
+using TeaChest.ViewModels;
 
 namespace TeaChest.Tests;
 
@@ -16,6 +17,14 @@ public sealed class LooseFilterTests
         Notes = LooseWingetNote
     };
 
+    private static AppItem Exact() => new()
+    {
+        Name = "Git",
+        Id = "Git.Git",
+        Source = "winget",
+        InstallType = "winget",
+        MatchConfidence = MatchConfidence.Exact
+    };
 
     [Theory]
     [InlineData(MatchConfidence.Loose, true)]
@@ -23,6 +32,54 @@ public sealed class LooseFilterTests
     [InlineData(MatchConfidence.None, false)]
     public void IsLooseMatchFollowsConfidence(MatchConfidence confidence, bool expected)
         => Assert.Equal(expected, new AppItem { MatchConfidence = confidence }.IsLooseMatch);
+
+    [Fact]
+    public void WorthCheckingKeepsOnlyLooseMatches()
+    {
+        Assert.True(MainViewModel.Matches(Loose(), AppFilter.WorthChecking, ""));
+        Assert.False(MainViewModel.Matches(Exact(), AppFilter.WorthChecking, ""));
+        Assert.False(MainViewModel.Matches(new AppItem { Name = "Paint.NET" }, AppFilter.WorthChecking, ""));
+    }
+
+    [Fact]
+    public void WorthCheckingStillHonoursSearch()
+    {
+        Assert.True(MainViewModel.Matches(Loose(), AppFilter.WorthChecking, "  zoom "));
+        Assert.False(MainViewModel.Matches(Loose(), AppFilter.WorthChecking, "git"));
+    }
+
+    [Fact]
+    public void AllShowsEverythingWhenSearchIsBlank()
+    {
+        Assert.True(MainViewModel.Matches(Loose(), AppFilter.All, ""));
+        Assert.True(MainViewModel.Matches(Exact(), AppFilter.All, "   "));
+    }
+
+    [Fact]
+    public void ExistingFiltersStillWork()
+    {
+        var manual = new AppItem { Name = "Old Tool", InstallType = "manual", IsSelected = true };
+        var store = new AppItem { Name = "Calculator", InstallType = "msstore", Id = "9WZDNCRFHVN5" };
+
+        Assert.True(MainViewModel.Matches(manual, AppFilter.Selected, ""));
+        Assert.False(MainViewModel.Matches(manual, AppFilter.NotSelected, ""));
+        Assert.True(MainViewModel.Matches(manual, AppFilter.Manual, ""));
+        Assert.False(MainViewModel.Matches(manual, AppFilter.Winget, ""));
+        Assert.True(MainViewModel.Matches(store, AppFilter.Store, ""));
+        Assert.False(MainViewModel.Matches(store, AppFilter.Manual, ""));
+        Assert.True(MainViewModel.Matches(Exact(), AppFilter.Winget, ""));
+    }
+
+    [Fact]
+    public void SearchMatchesTheNoteToo()
+        => Assert.True(MainViewModel.Matches(Loose(), AppFilter.All, "quick check"));
+
+    [Theory]
+    [InlineData(0, "Worth a check")]
+    [InlineData(1, "Worth a check (1)")]
+    [InlineData(12, "Worth a check (12)")]
+    public void LabelShowsTheCountOnlyWhenThereIsOne(int count, string expected)
+        => Assert.Equal(expected, MainViewModel.WorthCheckingLabel(count));
 
     [Fact]
     public void InventoryRowDropsTheLooseNoteItPicksUp()

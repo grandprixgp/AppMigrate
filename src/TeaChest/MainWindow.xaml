@@ -205,9 +205,13 @@
                             <ListBox Style="{StaticResource FilterListBox}"
                                      ItemsSource="{Binding Filters}"
                                      SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
-                                     ItemContainerStyle="{StaticResource FilterItem}"
                                      DisplayMemberPath="Label"
                                      Margin="9,2,16,0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource FilterItem}">
+                                        <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BoolToVis}}" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
                                 <ListBox.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel Orientation="Horizontal" />
@@ -235,10 +239,20 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}"
-                                                               FontWeight="SemiBold"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding Name}" />
+                                                    <DockPanel>
+                                                        <Border DockPanel.Dock="Left"
+                                                                Background="Transparent"
+                                                                Padding="0,0,7,0"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="Loose name match. Worth a quick check."
+                                                                Visibility="{Binding IsLooseMatch, Converter={StaticResource BoolToVis}}">
+                                                            <Ellipse Width="7" Height="7" Fill="{DynamicResource Warning}" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Name}" />
+                                                    </DockPanel>
                                                     <TextBlock Text="{Binding Publisher}"
                                                                Style="{StaticResource RowSubtext}" />
                                                 </StackPanel>

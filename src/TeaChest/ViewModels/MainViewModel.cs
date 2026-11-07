@@ -17,11 +17,49 @@ public enum AppFilter
     NotSelected,
     Manual,
     Store,
-    Winget
+    Winget,
+    WorthChecking
 }
 
-public sealed record FilterOption(string Label, AppFilter Filter)
+// A class rather than a record so a tab can change its label and hide itself without being
+// swapped out, which would drop the ListBox selection.
+public sealed class FilterOption : INotifyPropertyChanged
 {
+    private string _label;
+    private bool _isVisible = true;
+
+    public FilterOption(string label, AppFilter filter)
+    {
+        _label = label;
+        Filter = filter;
+    }
+
+    public AppFilter Filter { get; }
+
+    public string Label
+    {
+        get => _label;
+        set
+        {
+            if (_label == value) return;
+            _label = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Label)));
+        }
+    }
+
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set
+        {
+            if (_isVisible == value) return;
+            _isVisible = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsVisible)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public override string ToString() => Label;
 }
 
@@ -63,6 +101,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _wingetCount;
     private int _manualCount;
     private int _storeCount;
+    private int _worthCheckingCount;
+    private readonly FilterOption _worthCheckingFilter = new("Worth a check", AppFilter.WorthChecking) { IsVisible = false };
     private InstallReport? _lastReport;
     private string _origin = "";
 
@@ -75,7 +115,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new("Not selected", AppFilter.NotSelected),
             new("Manual", AppFilter.Manual),
             new("Store", AppFilter.Store),
-            new("WinGet", AppFilter.Winget)
+            new("WinGet", AppFilter.Winget),
+            _worthCheckingFilter
         };
         _selectedFilter = Filters[0];
 
@@ -264,6 +305,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _storeCount;
         private set => SetField(ref _storeCount, value);
+    }
+
+    public int WorthCheckingCount
+    {
+        get => _worthCheckingCount;
+        private set
+        {
+            if (!SetField(ref _worthCheckingCount, value)) return;
+            _worthCheckingFilter.Label = WorthCheckingLabel(value);
+            _worthCheckingFilter.IsVisible = value > 0;
+            // Nothing left to check, so don't leave the grid empty behind a hidden tab.
+            if (value == 0 && SelectedFilter == _worthCheckingFilter) SelectedFilter = Filters[0];
+        }
     }
 
     public bool HasApps => TotalCount > 0;
@@ -732,24 +786,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
         WingetCount = Apps.Count(a => a.IsWinget);
         ManualCount = Apps.Count(a => a.IsManual);
         StoreCount = Apps.Count(a => a.IsStore);
+        WorthCheckingCount = Apps.Count(a => a.IsLooseMatch);
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private bool FilterApp(object item)
+    internal static string WorthCheckingLabel(int count)
+        => count > 0 ? $"Worth a check ({count})" : "Worth a check";
+
+    private bool FilterApp(object item) => item is AppItem app && Matches(app, SelectedFilter.Filter, SearchText);
+
+    internal static bool Matches(AppItem app, AppFilter filter, string search)
     {
-        if (item is not AppItem app) return false;
-        switch (SelectedFilter.Filter)
+        switch (filter)
         {
             case AppFilter.Selected when !app.IsSelected:
             case AppFilter.NotSelected when app.IsSelected:
             case AppFilter.Manual when !app.IsManual:
             case AppFilter.Store when !app.IsStore:
             case AppFilter.Winget when !app.IsWinget:
+            case AppFilter.WorthChecking when !app.IsLooseMatch:
                 return false;
         }
 
-        string search = SearchText.Trim();
-        return search.Length == 0 || app.SearchBlob.Contains(search, StringComparison.OrdinalIgnoreCase);
+        string trimmed = search.Trim();
+        return trimmed.Length == 0 || app.SearchBlob.Contains(trimmed, StringComparison.OrdinalIgnoreCase);
     }
 
     private void NotifyPlanChanged()
