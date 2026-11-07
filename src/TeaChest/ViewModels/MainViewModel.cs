@@ -75,6 +75,9 @@ public sealed class AppErrorEventArgs : EventArgs
     public string Message { get; }
 }
 
+/// <summary>One labelled line in the details panel.</summary>
+public sealed record DetailRow(string Label, string Value, bool IsMono = false);
+
 public sealed class MainViewModel : INotifyPropertyChanged
 {
     private readonly ManifestService _manifestService = new();
@@ -105,6 +108,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FilterOption _worthCheckingFilter = new("Worth a check", AppFilter.WorthChecking) { IsVisible = false };
     private InstallReport? _lastReport;
     private string _origin = "";
+    private AppItem? _selectedApp;
+    private bool _isDetailsOpen;
+    private IReadOnlyList<DetailRow> _selectedDetails = Array.Empty<DetailRow>();
+    private bool _hasStoreLink;
+    private bool _hasWingetLink;
+    private bool _hasInstallFolder;
 
     public MainViewModel()
     {
@@ -130,6 +139,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         SelectVisibleCommand = new RelayCommand(() => SetVisibleSelection(true), () => !IsBusy && TotalCount > 0);
         ClearVisibleCommand = new RelayCommand(() => SetVisibleSelection(false), () => !IsBusy && TotalCount > 0);
         RestoreDefaultsCommand = new RelayCommand(RestoreDefaults, () => !IsBusy && TotalCount > 0);
+        CloseDetailsCommand = new RelayCommand(() => IsDetailsOpen = false);
+        // Each link is rebuilt from the row at click time, never from a string kept since selection.
+        OpenStoreCommand = new RelayCommand(() => OpenLink(AppLinks.StoreLink(SelectedApp)));
+        OpenWingetCommand = new RelayCommand(() => OpenLink(AppLinks.WingetLink(SelectedApp)));
+        OpenFolderCommand = new RelayCommand(() => OpenLink(AppLinks.LocalFolder(SelectedApp)));
 
         DefaultManifestPath = Path.Combine(AppContext.BaseDirectory, ManifestService.DefaultFileName);
         VersionText = "v" + (Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
@@ -145,6 +159,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand SelectVisibleCommand { get; }
     public RelayCommand ClearVisibleCommand { get; }
     public RelayCommand RestoreDefaultsCommand { get; }
+    public RelayCommand CloseDetailsCommand { get; }
+    public RelayCommand OpenStoreCommand { get; }
+    public RelayCommand OpenWingetCommand { get; }
+    public RelayCommand OpenFolderCommand { get; }
 
     public string DefaultManifestPath { get; }
     public string VersionText { get; }
@@ -318,6 +336,54 @@ public sealed class MainViewModel : INotifyPropertyChanged
             // Nothing left to check, so don't leave the grid empty behind a hidden tab.
             if (value == 0 && SelectedFilter == _worthCheckingFilter) SelectedFilter = Filters[0];
         }
+    }
+
+    /// <summary>The row the details panel shows. Null when nothing is picked in the grid.</summary>
+    public AppItem? SelectedApp
+    {
+        get => _selectedApp;
+        set
+        {
+            if (!SetField(ref _selectedApp, value)) return;
+            // Worked out once per pick: the folder check touches the disk.
+            SelectedDetails = value == null ? Array.Empty<DetailRow>() : DetailRows(value);
+            HasStoreLink = AppLinks.StoreLink(value) != null;
+            HasWingetLink = AppLinks.WingetLink(value) != null;
+            HasInstallFolder = AppLinks.LocalFolder(value) != null;
+            OnPropertyChanged(nameof(HasSelectedApp));
+        }
+    }
+
+    public bool HasSelectedApp => SelectedApp != null;
+
+    public bool IsDetailsOpen
+    {
+        get => _isDetailsOpen;
+        set => SetField(ref _isDetailsOpen, value);
+    }
+
+    public IReadOnlyList<DetailRow> SelectedDetails
+    {
+        get => _selectedDetails;
+        private set => SetField(ref _selectedDetails, value);
+    }
+
+    public bool HasStoreLink
+    {
+        get => _hasStoreLink;
+        private set => SetField(ref _hasStoreLink, value);
+    }
+
+    public bool HasWingetLink
+    {
+        get => _hasWingetLink;
+        private set => SetField(ref _hasWingetLink, value);
+    }
+
+    public bool HasInstallFolder
+    {
+        get => _hasInstallFolder;
+        private set => SetField(ref _hasInstallFolder, value);
     }
 
     public bool HasApps => TotalCount > 0;
@@ -810,6 +876,63 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         string trimmed = search.Trim();
         return trimmed.Length == 0 || app.SearchBlob.Contains(trimmed, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The panel's lines for one row, skipping empty fields but always saying how it was matched.</summary>
+    internal static IReadOnlyList<DetailRow> DetailRows(AppItem app)
+    {
+        var rows = new List<DetailRow>();
+        void Add(string label, string? value, bool mono = false)
+        {
+            if (!string.IsNullOrWhiteSpace(value)) rows.Add(new DetailRow(label, value.Trim(), mono));
+        }
+
+        Add("ID", app.Id, mono: true);
+        Add("Type", app.TypeLabel);
+        Add("Version", app.Version);
+        Add("Category", app.Category);
+        Add("Publisher", app.Publisher);
+        Add("Scope", app.Scope);
+        Add("Source", app.Source);
+        Add("How it was matched", DescribeMatch(app));
+        Add("Notes", app.Notes);
+        return rows;
+    }
+
+    internal static string DescribeMatch(AppItem app)
+    {
+        string where = SourceLabel(app.Source);
+        return app.MatchConfidence switch
+        {
+            MatchConfidence.Loose => $"A loose name match against {where}. Worth a quick check.",
+            MatchConfidence.Exact => $"An exact name match against {where}.",
+            _ when !string.IsNullOrWhiteSpace(app.Id) => $"The ID came straight from {where}, with no name guess involved.",
+            _ => $"Found in {where}, with no package ID."
+        };
+    }
+
+    private static string SourceLabel(string? source) => source?.Trim().ToLowerInvariant() switch
+    {
+        "winget" => "WinGet",
+        "msstore" => "the Microsoft Store",
+        "msix" => "the installed Store packages",
+        "registry" => "the registry",
+        "manifest" => "a manifest",
+        null or "" => "an unknown source",
+        _ => source.Trim()
+    };
+
+    private void OpenLink(string? target)
+    {
+        if (target == null) return;
+        try
+        {
+            AppLinks.Open(target);
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(this, new AppErrorEventArgs("Could not open link", ex.Message));
+        }
     }
 
     private void NotifyPlanChanged()
