@@ -1,4 +1,5 @@
 using TeaChest.Models;
+using TeaChest.Services.ExtraSources;
 
 namespace TeaChest.Services;
 
@@ -14,6 +15,8 @@ public sealed class ScanService
     private readonly RegistryInventoryService _registry = new();
     private readonly AppxInventoryService _appx = new();
     private readonly WingetService _winget = new();
+    // Later sources (VS Code extensions, Scoop, npm and friends) go here.
+    private readonly IReadOnlyList<IExtraSource> _extraSources = Array.Empty<IExtraSource>();
     private readonly SelectionOptions _options;
     private readonly NameCache _names;
 
@@ -32,46 +35,16 @@ public sealed class ScanService
 
         Publish(items, gate, progress, "Starting inventory...", true, 0, false);
 
-        // TODO: more sources! Scoop and Chocolatey exports, VS Code extensions (`code --list-extensions`),
-        // global npm/pipx/dotnet tools, and WSL distros. For developers that's half of what makes
-        // a PC feel like theirs, and each one is basically another WrapSource call.
         var tasks = new List<Task<SourceBatch>>
         {
             WrapSource("Registry", _registry.ScanAsync(cancellationToken)),
             WrapSource("AppX", _appx.ScanAsync(cancellationToken)),
             WrapWinget(cancellationToken)
         };
-        bool wingetAvailable = true;
+        foreach (IExtraSource source in _extraSources) tasks.Add(WrapExtraSource(source, cancellationToken));
 
-        while (tasks.Count > 0)
-        {
-            Task<SourceBatch> finished = await Task.WhenAny(tasks).ConfigureAwait(false);
-            tasks.Remove(finished);
-            try
-            {
-                SourceBatch batch = await finished.ConfigureAwait(false);
-                lock (gate) MergeRange(items, batch.Items);
-                if (batch.Warning != null)
-                {
-                    warnings.Add(batch.Warning);
-                    if (batch.Name == "WinGet" && batch.Items.Count == 0) wingetAvailable = false;
-                }
-                Publish(items, gate, progress,
-                    batch.Warning == null
-                        ? $"{batch.Name}: {batch.Items.Count} items · {items.Count} apps so far"
-                        : $"{batch.Name} unavailable; continuing with other sources.",
-                    true, 0, false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                warnings.Add(ex.Message);
-                Publish(items, gate, progress, ex.Message, true, 0, false);
-            }
-        }
+        bool wingetAvailable = await CollectAsync(tasks, items, gate, warnings,
+            status => Publish(items, gate, progress, status, true, 0, false)).ConfigureAwait(false);
 
         List<AppItem> resolveTargets = wingetAvailable ? BuildResolutionTargets(items, gate) : new List<AppItem>();
         if (resolveTargets.Count > 0)
@@ -193,6 +166,74 @@ public sealed class ScanService
         return snapshot;
     }
 
+    /// <summary>
+    /// Merges each source in as it finishes. A source that fails becomes a warning and the scan
+    /// carries on with the rest; only cancellation stops it. Returns false when WinGet was unavailable.
+    /// </summary>
+    internal static async Task<bool> CollectAsync(
+        List<Task<SourceBatch>> tasks,
+        Dictionary<string, AppItem> items,
+        object gate,
+        List<string> warnings,
+        Action<string> report)
+    {
+        bool wingetAvailable = true;
+        while (tasks.Count > 0)
+        {
+            Task<SourceBatch> finished = await Task.WhenAny(tasks).ConfigureAwait(false);
+            tasks.Remove(finished);
+            try
+            {
+                SourceBatch batch = await finished.ConfigureAwait(false);
+                lock (gate) MergeRange(items, batch.Items);
+                if (batch.Warning != null)
+                {
+                    warnings.Add(batch.Warning);
+                    if (batch.Name == "WinGet" && batch.Items.Count == 0) wingetAvailable = false;
+                }
+                int count;
+                lock (gate) count = items.Count;
+                report(batch.Warning == null
+                    ? $"{batch.Name}: {batch.Items.Count} items · {count} apps so far"
+                    : $"{batch.Name} unavailable; continuing with other sources.");
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                warnings.Add(ex.Message);
+                report(ex.Message);
+            }
+        }
+        return wingetAvailable;
+    }
+
+    internal static Task<SourceBatch> WrapExtraSource(IExtraSource source, CancellationToken cancellationToken)
+    {
+        return WrapSource(source.Name, RunAsync());
+
+        // Async so a source that throws before its first await still fails only its own task.
+        async Task<IReadOnlyList<AppItem>> RunAsync()
+        {
+            try
+            {
+                IReadOnlyList<AppItem> found = await source.ScanAsync(cancellationToken).ConfigureAwait(false);
+                return ExtraSourceTools.Prepare(source, found);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Its own timeout would otherwise look like the user cancelling the whole scan.
+                throw new InvalidOperationException($"{source.Name} couldn't be read: {ex.Message}", ex);
+            }
+        }
+    }
+
     private static Task<SourceBatch> WrapSource(string name, Task<IReadOnlyList<AppItem>> task)
     {
         return task.ContinueWith(t =>
@@ -287,13 +328,15 @@ public sealed class ScanService
         }
     }
 
-    private static List<AppItem> BuildResolutionTargets(Dictionary<string, AppItem> items, object gate)
+    internal static List<AppItem> BuildResolutionTargets(Dictionary<string, AppItem> items, object gate)
     {
         lock (gate)
         {
             return items.Values
                 .Where(item =>
                 {
+                    // An npm package or VS Code extension has no WinGet package to find.
+                    if (AppClassifier.IsAddOn(item)) return false;
                     if (AppClassifier.IsInbox(item)) return false;
                     string category = AppClassifier.GetCategory(item.Name, item.InstallType);
                     if (category is "Runtime" or "Driver") return false;
@@ -416,6 +459,6 @@ public sealed class ScanService
         }
     }
 
-    private sealed record SourceBatch(string Name, IReadOnlyList<AppItem> Items, string? Warning);
+    internal sealed record SourceBatch(string Name, IReadOnlyList<AppItem> Items, string? Warning);
     internal sealed record ResolveResult(NameMatch? WingetId, NameMatch? StoreId);
 }

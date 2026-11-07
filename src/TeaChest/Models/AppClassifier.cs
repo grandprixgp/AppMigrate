@@ -37,6 +37,17 @@ public static class AppClassifier
         "Widgets Platform Runtime", "Game Speech Window", "Xbox TCUI", "Windows Security"
     };
 
+    /// <summary>
+    /// Sources whose rows are add-ons rather than apps, by lower-cased IExtraSource name. A dev PC
+    /// can have 200 VS Code extensions, so these start unticked. A new source adds its name here.
+    /// </summary>
+    public static readonly IReadOnlySet<string> AddOnSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "vs code", "scoop", "chocolatey", "npm", "pipx", "dotnet tool", "wsl"
+    };
+
+    public static bool IsAddOn(AppItem item) => AddOnSources.Contains(item.Source);
+
     public static string GetCategory(string name, string installType)
     {
         if (RuntimePattern.IsMatch(name)) return "Runtime";
@@ -105,6 +116,7 @@ public static class AppClassifier
         bool inbox = IsInbox(item);
         bool include = options.IncludeAll || !(runtime || driver || inbox);
         if (options.NoStore && IsStoreItem(item)) include = false;
+        if (IsAddOn(item)) include = false;
         foreach (string pattern in options.Excludes)
         {
             if (Matches(item.Name, pattern) || Matches(item.Id, pattern))
