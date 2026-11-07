@@ -88,6 +88,7 @@ public sealed class AppItem : INotifyPropertyChanged
         }
     }
 
+    public bool IsLooseMatch => MatchConfidence == MatchConfidence.Loose;
     public bool IsManual => string.Equals(InstallType, "manual", StringComparison.OrdinalIgnoreCase);
     public bool IsStore => string.Equals(InstallType, "msstore", StringComparison.OrdinalIgnoreCase)
                            || string.Equals(Source, "msix", StringComparison.OrdinalIgnoreCase)
@@ -138,6 +139,12 @@ public sealed class AppItem : INotifyPropertyChanged
             // because the same ID also arrived from a loose name lookup.
             if (ConfidenceStrength(other.MatchConfidence) > ConfidenceStrength(MatchConfidence)) MatchConfidence = other.MatchConfidence;
         }
+        if (MatchConfidence == MatchConfidence.None && IsLooseNote(Notes))
+        {
+            // The ID is no longer a guess, so a note telling the user to check it would be wrong.
+            // Fall back to the other row's note when that one still holds true.
+            Notes = IsLooseNote(other.Notes) ? "" : other.Notes ?? "";
+        }
         if (string.IsNullOrWhiteSpace(UninstallString) && !string.IsNullOrWhiteSpace(other.UninstallString)) UninstallString = other.UninstallString;
         if (string.IsNullOrWhiteSpace(InstallLocation) && !string.IsNullOrWhiteSpace(other.InstallLocation)) InstallLocation = other.InstallLocation;
         if (string.IsNullOrWhiteSpace(StoreSearchName) && !string.IsNullOrWhiteSpace(other.StoreSearchName)) StoreSearchName = other.StoreSearchName;
@@ -155,6 +162,11 @@ public sealed class AppItem : INotifyPropertyChanged
             if (!string.IsNullOrWhiteSpace(other.Name) && other.Name.Length < Name.Length) Name = other.Name;
         }
     }
+
+    // ScanService ends both of its loose-match notes with this sentence.
+    private const string LooseNoteMarker = "Worth a quick check.";
+
+    private static bool IsLooseNote(string? notes) => notes?.Contains(LooseNoteMarker, StringComparison.Ordinal) == true;
 
     private static int ConfidenceStrength(MatchConfidence value) => value switch
     {
